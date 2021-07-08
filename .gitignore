@@ -1,0 +1,6 @@
+# Ignore log files
+*.log
+
+# Ignore custom configuration files
+custom.ini
+registry.info

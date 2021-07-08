@@ -1,2 +1,3 @@
-# alteryx-deploy
- Alteryx automated deployment utility
+# Alteryx Deploy
+
+Alteryx automated deployment utility
