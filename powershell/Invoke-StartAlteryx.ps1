@@ -10,7 +10,7 @@ function Invoke-StartAlteryx {
         File name:      Invoke-StartAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2021-07-08
+        Last modified:  2021-07-30
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -23,24 +23,58 @@ function Invoke-StartAlteryx {
         )]
         [ValidateNotNullOrEmpty ()]
         [System.Collections.Specialized.OrderedDictionary]
-        $Properties
+        $Properties,
+        [Parameter (
+            HelpMessage = "Non-interactive mode"
+        )]
+        [Switch]
+        $Unattended
     )
     Begin {
         # Get global preference vrariables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+        # Variables
+        $ServiceName = "AlteryxService"
         # Retrieve Alteryx Service utility path
         $AlteryxService = Get-AlteryxServerProcess -Process "Service" -InstallDirectory $Properties.InstallationPath
     }
     Process {
         Write-Log -Type "INFO" -Message "Starting Alteryx Service"
-        if ($PSCmdlet.ShouldProcess("Alteryx Service", "Start")) {
-            $Process = Start-Process -FilePath $AlteryxService -ArgumentList "start" -Verb "RunAs" -PassThru -Wait
-            Write-Log -Type "DEBUG" -Message $Process
-            # TODO check why exit code is 2
-            if ($Process.ExitCode -eq 2) {
-                Write-Log -Type "CHECK" -Message "Alteryx Service successfully started"
-            } else {
-                Write-Log -Type "ERROR" -Message "Alteryx Service could not be started" -ExitCode $Process.ExitCode
+        # Check service status
+        $WindowsService = Get-Service -Name $ServiceName
+        Write-Log -Type "DEBUG" -Message $WindowsService
+        if ($WindowsService.Status -eq "Running") {
+            Write-Log -Type "WARN" -Message "Alteryx Service ($ServiceName) is already running"
+        } else {
+            if ($PSCmdlet.ShouldProcess("Alteryx Service", "Start")) {
+                if ($Unattended -eq $false) {
+                    $Confirm = Confirm-Prompt -Prompt "Do you want to start the Alteryx Service?"
+                }
+                if ($Unattended -Or ($Confirm -eq $true)) {
+                    # Start service
+                    $Process = Start-Process -FilePath $AlteryxService -ArgumentList "start" -Verb "RunAs" -PassThru -Wait
+                    Write-Log -Type "DEBUG" -Message $Process
+                    # Check process outcome
+                    # TODO check why exit code is 2
+                    if ($Process.ExitCode -eq 2) {
+                        # Wait for service to start
+                        while ((Get-Service -Name $ServiceName).Status -eq "StartPending") {
+                            Write-Log -Type "INFO" -Message "Alteryx Service is starting..."
+                            Start-Sleep -Seconds 1
+                        }
+                        # Check status
+                        if ((Get-Service -Name $ServiceName).Status -eq "Running") {
+                            Write-Log -Type "DEBUG" -Message (Get-Service -Name $ServiceName)
+                            Write-Log -Type "CHECK" -Message "Alteryx Service successfully started"
+                        } else {
+                            Write-Log -Type "ERROR" -Message "Attempt to start the Alteryx Service ($ServiceName) failed" -ExitCode 1
+                        }
+                    } else {
+                        Write-Log -Type "ERROR" -Message "Alteryx Service could not be started" -ExitCode $Process.ExitCode
+                    }
+                } else {
+                    Write-Log -Type "WARN" -Message "Action was cancelled by the user" -ExitCode 0
+                }
             }
         }
     }
