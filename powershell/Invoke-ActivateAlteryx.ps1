@@ -16,7 +16,7 @@ function Invoke-ActivateAlteryx {
         File name:      Invoke-ActivateAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2021-07-05
+        Last modified:  2021-08-30
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -24,7 +24,9 @@ function Invoke-ActivateAlteryx {
         .LINK
         https://help.alteryx.com/current/product-activation-and-licensing/use-command-line-options
     #>
-    [CmdletBinding ()]
+    [CmdletBinding (
+        SupportsShouldProcess = $true
+    )]
     Param (
         [Parameter (
             Position    = 1,
@@ -45,45 +47,53 @@ function Invoke-ActivateAlteryx {
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # License utility
         $LicenseUtility = Get-AlteryxLicenseUtility -Path (Join-Path -Path $Properties.InstallationPath -ChildPath "bin")
-        # Email address
-        if ($null -eq $Properties.LicenseEmail) {
-            if ($Unattended) {
-                Write-Log -Type "ERROR" -Message "No email address provided for license activation"
-                Write-Log -Type "WARN"  -Message "Retrieving email address associated with current session through Windows Active Directory"
-                $Email = Get-ADUser -Identity $env:UserName -Properties "mail" | Select-Object -ExpandProperty "mail"
-                Write-Log -Type "DEBUG" -Message $Email
-            } else {
-                # Prompt for email address and validate format
-                do {
-                    $Email = Read-Host -Prompt "Please enter the email address for license activation"
-                } until ($Email -as [System.Net.Mail.MailAddress])
-            }
-        } else {
-            $Email = $Properties.LicenseEmail
-        }
-        # License key(s)
-        $Keys = Get-Content -Path $Properties.LicenseFile
-        if ($Keys.Count -gt 1) {
-            $Success = "$($Keys.Count) licenses were successfully activated"
-            $Failure = "Licenses could not be activated"
-            $Keys    = $Keys -join " "
-        } elseif ($Keys.Count -eq 1) {
-            $Success = "$($Keys.Count) license was successfully activated"
-            $Failure = "License could not be activated"
-        } else {
-            Write-Log -Type "ERROR" -Message "No license key was provided" -ExitCode 1
-        }
     }
     Process {
-        # Call license utility
-        $Activation = Add-AlteryxLicense -Path $LicenseUtility -Key $Keys -Email $Email
-        # Check activation status
-        if (Select-String -InputObject $Activation -Pattern "License(s) successfully activated." -SimpleMatch -Quiet) {
-            Write-Log -Type "CHECK" -Message $Success
+        Write-Log -Type "INFO" -Message "Activating Alteryx licenses"
+        if ($PSCmdlet.ShouldProcess("Alteryx", "Activate")) {
+            # Check license key(s)
+            if (Test-Object -Path $Properties.LicenseFile -NotFound) {
+                Write-Log -Type "ERROR" -Message "License file path not found $($Properties.LicenseFile)" -ExitCode 1
+            }
+            $Keys = Get-Content -Path $Properties.LicenseFile
+            if ($Keys.Count -gt 1) {
+                $Success = "$($Keys.Count) licenses were successfully activated"
+                $Failure = "Licenses could not be activated"
+                $Keys    = $Keys -join " "
+            } elseif ($Keys.Count -eq 1) {
+                $Success = "$($Keys.Count) license was successfully activated"
+                $Failure = "License could not be activated"
+            } else {
+                Write-Log -Type "ERROR" -Message "No license key was provided" -ExitCode 1
+            }
+            # Check email address
+            if ($null -eq $Properties.LicenseEmail) {
+                if ($Unattended) {
+                    Write-Log -Type "ERROR" -Message "No email address provided for license activation"
+                    Write-Log -Type "WARN"  -Message "Retrieving email address associated with current session through Windows Active Directory"
+                    $Email = Get-ADUser -Identity $env:UserName -Properties "mail" | Select-Object -ExpandProperty "mail"
+                    Write-Log -Type "DEBUG" -Message $Email
+                } else {
+                    # Prompt for email address and validate format
+                    do {
+                        $Email = Read-Host -Prompt "Please enter the email address for license activation"
+                    } until ($Email -as [System.Net.Mail.MailAddress])
+                }
+            } else {
+                $Email = $Properties.LicenseEmail
+            }
+            # Call license utility
+            $Activation = Add-AlteryxLicense -Path $LicenseUtility -Key $Keys -Email $Email
+            # Check activation status
+            if (Select-String -InputObject $Activation -Pattern "License(s) successfully activated." -SimpleMatch -Quiet) {
+                Write-Log -Type "CHECK" -Message $Success
+            } else {
+                # Output error and stop script
+                Write-Log -Type "ERROR" -Message $Activation
+                Write-Log -Type "ERROR" -Message $Failure -ExitCode 1
+            }
         } else {
-            # Output error and stop script
-            Write-Log -Type "ERROR" -Message $Activation
-            Write-Log -Type "ERROR" -Message $Failure -ExitCode 1
+            Write-Log -Type "CHECK" -Message $Success
         }
     }
 }
