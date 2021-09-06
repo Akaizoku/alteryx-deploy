@@ -16,7 +16,7 @@ function Install-Alteryx {
         File name:      Install-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2021-09-02
+        Last modified:  2021-09-06
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -38,6 +38,14 @@ function Install-Alteryx {
         [System.Collections.Specialized.OrderedDictionary]
         $Properties,
         [Parameter (
+            Position    = 2,
+            Mandatory   = $true,
+            HelpMessage = "Installation properties"
+        )]
+        [ValidateNotNullOrEmpty ()]
+        [System.Collections.Specialized.OrderedDictionary]
+        $InstallationProperties,
+        [Parameter (
             HelpMessage = "Non-interactive mode"
         )]
         [Switch]
@@ -54,19 +62,12 @@ function Install-Alteryx {
         } else {
             $Arguments = ""
         }
-        # Installation
-        $InstallationOptions    = [Ordered]@{
-            "Server"            = $true
-            "PredictiveTools"   = $true
-            "IntelligenceSuite" = $true
-            "DataPackages"      = $true
-        }
     }
     Process {
         Write-Log -Type "INFO" -Message "Installation of Alteryx Server $($Properties.Version)"
         # ------------------------------------------------------------------------------
         # Alteryx Server
-        if ($InstallationOptions.Server -eq $true) {
+        if ($InstallationProperties.Server -eq $true) {
             $ServerFileName = [System.String]::Concat($Properties.ServerInstaller, $Properties.Version)
             $ServerPath = Join-Path -Path $Properties.SrcDirectory -ChildPath "$ServerFileName.exe"
             if (Test-Path -Path $ServerPath) {
@@ -94,7 +95,7 @@ function Install-Alteryx {
         }
         # ------------------------------------------------------------------------------
         # Predictive Tools
-        if ($InstallationOptions.PredictiveTools -eq $true) {
+        if ($InstallationProperties.PredictiveTools -eq $true) {
             $RFileName = [System.String]::Concat($Properties.RInstaller, $Properties.Version, ".exe")
             $RPath = Join-Path -Path $Properties.InstallationPath -ChildPath "RInstaller\$RFileName"
             if (Test-Path -Path $RPath) {
@@ -115,7 +116,7 @@ function Install-Alteryx {
         }
         # ------------------------------------------------------------------------------
         # Intelligence Suite
-        if ($InstallationOptions.IntelligenceSuite -eq $true) {
+        if ($InstallationProperties.IntelligenceSuite -eq $true) {
             $AISFileName = [System.String]::Concat($Properties.AISInstaller, $Properties.Version, ".exe")
             $AISPath = Join-Path -Path $Properties.SrcDirectory -ChildPath $AISFileName
             if (Test-Path -Path $AISPath) {
@@ -136,7 +137,7 @@ function Install-Alteryx {
         }
         # ------------------------------------------------------------------------------
         # Data packages
-        if ($InstallationOptions.DataPackages -eq $true) {
+        if ($InstallationProperties.DataPackages -eq $true) {
             # TODO
             $DataPackage = $null
             if ($null -ne $DataPackage) {

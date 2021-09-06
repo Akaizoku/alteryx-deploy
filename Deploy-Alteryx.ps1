@@ -29,7 +29,7 @@
 	File name:      Deploy-Alteryx.psm1
 	Author:         Florian Carrier
 	Creation date:  2021-06-13
-	Last modified:  2021-08-30
+	Last modified:  2021-09-03
 	Dependencies:   - PowerShell Tool Kit (PSTK)
 					- Alteryx PowerShell Module (PSAYX)
 
@@ -57,9 +57,7 @@ Param (
 	[ValidateSet (
 		"activate",
 		"backup",
-		"configure",
 		"install",
-		"reload",
 		"restart",
 		"restore",
 		"show",
@@ -117,19 +115,19 @@ Begin {
 	# List all required modules
 	$Modules = @("PSTK", "PSAYX")
 	foreach ($Module in $Modules) {
-	try {
-		# Check if module is installed
-		Import-Module -Name "$Module" -ErrorAction "Stop" -Force
-		Write-Log -Type "CHECK" -Object "The $Module module was successfully loaded."
-	} catch {
-		# Otherwise check if package is available locally
 		try {
-			Import-Module -Name (Join-Path -Path $LibDirectory -ChildPath "$Module") -ErrorAction "Stop" -Force
-			Write-Log -Type "CHECK" -Object "The $Module module was successfully loaded from the library directory."
+			# Check if module is installed
+			Import-Module -Name "$Module" -ErrorAction "Stop" -Force
+			Write-Log -Type "CHECK" -Object "The $Module module was successfully loaded."
 		} catch {
-			Throw "The $Module library could not be loaded. Make sure it has been made available on the machine or manually put it in the ""$LibDirectory"" directory"
+			# Otherwise check if package is available locally
+			try {
+				Import-Module -Name (Join-Path -Path $LibDirectory -ChildPath "$Module") -ErrorAction "Stop" -Force
+				Write-Log -Type "CHECK" -Object "The $Module module was successfully loaded from the library directory."
+			} catch {
+				Throw "The $Module library could not be loaded. Make sure it has been made available on the machine or manually put it in the ""$LibDirectory"" directory"
+			}
 		}
-	}
 	}
 
 	# ----------------------------------------------------------------------------
@@ -179,8 +177,17 @@ Begin {
 	# }
 
 	# ----------------------------------------------------------------------------
-	# Optional parameters
+	# Options
 	# ----------------------------------------------------------------------------
+	# Installation properties
+	$ValidateSet = @(
+		"Server"
+		"PredictiveTools"
+		"IntelligenceSuite"
+		"DataPackages"
+	  )
+	$InstallationProperties = Get-Properties -File $Properties.InstallationOptions -Directory $Properties.ConfDirectory -ValidateSet $ValidateSet
+	# Optional parameters
 	if ($PSBoundParameters.ContainsKey("Version")) {
 		$Properties.Version = $Version
 	}
@@ -194,10 +201,10 @@ Process {
 	switch ($Action) {
 		"activate"  { Invoke-ActivateAlteryx	-Properties $Properties -Unattended:$Unattended               }
 		"backup"    { Invoke-BackupAlteryx    	-Properties $Properties -Unattended:$Unattended               }
-		"install"   { Install-Alteryx         	-Properties $Properties -Unattended:$Unattended               }
+		"install"   { Install-Alteryx         	-Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended	}
 		"restart"   { Invoke-RestartAlteryx   	-Properties $Properties -Unattended:$Unattended               }
 		"restore"   { Invoke-RestoreAlteryx   	-Properties $Properties -Unattended:$Unattended               }
-		"show"      { Show-Configuration      	-Properties $Properties                                       }
+		"show"      { Show-Configuration      	-Properties $Properties -InstallationProperties $InstallationProperties							}
 		"start"     { Invoke-StartAlteryx     	-Properties $Properties -Unattended:$Unattended               }
 		"stop"      { Invoke-StopAlteryx      	-Properties $Properties -Unattended:$Unattended               }
 		"uninstall"	{ Uninstall-Alteryx       	-Properties $Properties -Unattended:$Unattended               }

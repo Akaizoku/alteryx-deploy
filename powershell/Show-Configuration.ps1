@@ -9,22 +9,33 @@ function Show-Configuration {
         .PARAMETER Properties
         The properties parameter corresponds to the script configuration
 
+        .PARAMETER InstallationProperties
+        The installation properties parameter corresponds to the installation configuration
+
         .NOTES
         File name:      Show-Configuration.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2021-07-08
+        Last modified:  2021-09-06
     #>
     [CmdletBinding ()]
     Param (
         [Parameter (
-        Position    = 1,
-        Mandatory   = $true,
-        HelpMessage = "Script properties"
+            Position    = 1,
+            Mandatory   = $true,
+            HelpMessage = "Script properties"
         )]
         [ValidateNotNullOrEmpty ()]
         [System.Collections.Specialized.OrderedDictionary]
-        $Properties
+        $Properties,
+        [Parameter (
+            Position    = 2,
+            Mandatory   = $true,
+            HelpMessage = "Installation properties"
+        )]
+        [ValidateNotNullOrEmpty ()]
+        [System.Collections.Specialized.OrderedDictionary]
+        $InstallationProperties
     )
     Begin {
         # Get global preference variables
@@ -36,5 +47,8 @@ function Show-Configuration {
         # Display default x custom script configuration
         Write-Log -Type "INFO" -Object "Script configuration"
         Write-Host -Object ($Properties | Out-String).Trim() -ForegroundColor $Colour
+        # Display installation configuration
+        Write-Log -Type "INFO" -Object "Installation configuration"
+        Write-Host -Object ($InstallationProperties | Out-String).Trim() -ForegroundColor $Colour
     }
 }
