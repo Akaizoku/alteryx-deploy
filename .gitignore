@@ -1,6 +1,9 @@
 # Ignore log files
 *.log
 
+# Ignore temporary directory
+tmp
+
 # Ignore custom configuration files
 custom.ini
 registry.info
