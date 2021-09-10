@@ -10,7 +10,7 @@ function Invoke-BackupAlteryx {
         File name:      Invoke-BackupAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-26
-        Last modified:  2021-08-30
+        Last modified:  2021-09-10
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -34,11 +34,11 @@ function Invoke-BackupAlteryx {
         # Get global preference vrariables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # Variables
-        $ISOTimeStamp   = Get-Date -Format "yyyyMMdd_HHmmss"
-        $BackupPath     = Join-Path -Path $Properties.BackupDirectory -ChildPath "${ISOTimeStamp}_Alteryx_Server"
-        $MongoDBPath    = Join-Path -Path $BackupPath -ChildPath "MongoDB"
-        $ServicePath    = Join-Path -Path $Properties.InstallationPath -ChildPath "bin\AlteryxService.exe"
-        $BackupArchive  = [System.String]::Concat($BackupPath, ".zip")
+        $ISOTimeStamp   = Get-Date  -Format "yyyyMMdd_HHmmss"
+        $BackupPath     = Join-Path -Path $Properties.BackupDirectory   -ChildPath "${ISOTimeStamp}_Alteryx_Server.zip"
+        $TempBackupPath = Join-Path -Path $Properties.TempDirectory     -ChildPath "${ISOTimeStamp}_Alteryx_Server"
+        $MongoDBPath    = Join-Path -Path $TempBackupPath               -ChildPath "MongoDB"
+        $ServicePath    = Join-Path -Path $Properties.InstallationPath  -ChildPath "bin\AlteryxService.exe"
         # Backup options
         $Backup = [Ordered]@{
             "Database"      = $true
@@ -70,7 +70,7 @@ function Invoke-BackupAlteryx {
             Write-Log -Type "DEBUG" -Message $Service
             $ServiceStatus = $WindowsService.Status
             if ($ServiceStatus -eq "Running") {
-                Invoke-StopAlteryx -Properties $Properties
+                Invoke-StopAlteryx -Properties $Properties -Unattended:$Unattended
             }
         } else {
             Write-Log -Type "ERROR" -Message "Alteryx Service ($Service) could not be found" -ExitCode 1
@@ -79,12 +79,21 @@ function Invoke-BackupAlteryx {
         # Create database dump
         if ($Backup.Database -eq $true) {
             Write-Log -Type "INFO" -Message "Create MongoDB database backup"
-            $DatabaseBackup = Backup-AlteryxDatabase -Path $MongoDBPath -ServicePath $ServicePath
-            if ($DatabaseBackup -match "EMongoDump failed") {
-                Write-Log -Type "ERROR" -Message "$DatabaseBackup"
-                Write-Log -Type "ERROR" -Message "Database backup failed" -ExitCode 1
-            } else {
-                Write-Log -Type "DEBUG" -Message "$DatabaseBackup"
+            if ($PSCmdlet.ShouldProcess("MongoDB", "Back-up")) {
+                if (-Not $Unattended) {
+                    $BackupConfirm = Confirm-Prompt -Prompt "Do you want to perform a back-up of the MongoDB database?"
+                }
+                if ($Unattended -Or $BackupConfirm) {
+                    $DatabaseBackup = Backup-AlteryxDatabase -Path $MongoDBPath -ServicePath $ServicePath
+                    if ($DatabaseBackup -match "EMongoDump failed") {
+                        Write-Log -Type "ERROR" -Message "$DatabaseBackup"
+                        Write-Log -Type "ERROR" -Message "Database backup failed" -ExitCode 1
+                    } else {
+                        Write-Log -Type "DEBUG" -Message "$DatabaseBackup"
+                    }
+                } else {
+                    Write-Log -Type "WARN" -Message "MongoDB database backup cancelled by user"
+                }
             }
         }
         # ----------------------------------------------------------------------------
@@ -95,7 +104,9 @@ function Invoke-BackupAlteryx {
             foreach ($ConfigurationFile in $ConfigurationFiles.GetEnumerator()) {
                 $FilePath = Join-Path -Path $ProgramData -ChildPath $ConfigurationFile.Value
                 if (Test-Object -Path $FilePath) {
-                    Copy-Object -Path $FilePath -Destination $BackupPath -Force
+                    if ($PSCmdlet.ShouldProcess($FilePath, "Back-up")) {
+                        Copy-Object -Path $FilePath -Destination $TempBackupPath -Force
+                    }
                 } else {
                     Write-Log -Type "WARN" -Message "$($ConfigurationFile.Name) configuration file could not be found ($FilePath)"
                 }
@@ -105,29 +116,32 @@ function Invoke-BackupAlteryx {
         # Backup tokens
         if ($Backup.Token -eq $true) {
             Write-Log -Type "INFO" -Message "Backup controller token"
-            $ControllerToken = Get-AlteryxServerSecret -Path $ServicePath
-            Write-Log -Type "DEBUG" -Message $ControllerToken
-            $TokenFilePath = Join-Path -Path $BackupPath -ChildPath "ControllerToken.txt"
-            Write-Log -Type "DEBUG" -Message $TokenFilePath
-            Out-File -InputObject $ControllerToken.Trim() -FilePath $TokenFilePath
+            if ($PSCmdlet.ShouldProcess("Controller token", "Back-up")) {
+                $ControllerToken = Get-AlteryxServerSecret -Path $ServicePath
+                Write-Log -Type "DEBUG" -Message $ControllerToken
+                $TokenFilePath = Join-Path -Path $TempBackupPath -ChildPath "ControllerToken.txt"
+                Write-Log -Type "DEBUG" -Message $TokenFilePath
+                Out-File -InputObject $ControllerToken.Trim() -FilePath $TokenFilePath
+            }
         }
         # ----------------------------------------------------------------------------
         # Compress backup
         Write-Log -Type "INFO" -Message "Compress backup files"
-        Compress-Archive -Path "$BackupPath\*" -DestinationPath $BackupArchive -CompressionLevel "Optimal" -WhatIf:$WhatIfPreference
-        Write-Log -Type "DEBUG" -Message $BackupArchive
-        # Remove staging folder
-        if (Test-Object -Path $BackupArchive) {
-            Write-Log -Type "INFO" -Message "Remove staging backup folder"
-            Remove-Object -Path $BackupPath -Type "Folder"
-        } elseif (Test-Object -Path $BackupPath) {
-            Write-Log -Type "ERROR" -Message "Backup files compression failed"
+        Compress-Archive -Path "$TempBackupPath\*" -DestinationPath $BackupPath -CompressionLevel "Optimal" -WhatIf:$WhatIfPreference
+        Write-Log -Type "DEBUG" -Message $BackupPath
+        if (Test-Object -Path $BackupPath -NotFound) {
+            Write-Log -Type "ERROR" -Message "Backup files compression failed" -ErrorCode 1
         } else {
-            Write-Log -Type "ERROR" -Message "Alteryx Server backup failed" -ErrorCode 1
+            # Remove staging folder
+            Write-Log -Type "INFO" -Message "Remove staging backup folder"
+            if ($PSCmdlet.ShouldProcess($TempBackupPath, "Remove")) {
+                Remove-Object -Path $TempBackupPath -Type "Folder"
+            }
         }
+        # ----------------------------------------------------------------------------
         # Restart service if it was running before
         if ($ServiceStatus -eq "Running") {
-            Invoke-StartAlteryx -Properties $Properties
+            Invoke-StartAlteryx -Properties $Properties -Unattended:$Unattended
         }
     }
     End {
