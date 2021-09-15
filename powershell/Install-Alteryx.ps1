@@ -16,7 +16,7 @@ function Install-Alteryx {
         File name:      Install-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2021-09-06
+        Last modified:  2021-09-14
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -56,6 +56,16 @@ function Install-Alteryx {
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # Variables
         $ISOTimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
+        $Tags = [Ordered]@{"Version" = $Properties.Version}
+        # Filenames
+        if ($InstallationProperties.Product -eq "Designer") {
+            $ServerInstaller = "AlteryxInstallx64_<Version>.exe"
+        } else {
+            $ServerInstaller = "AlteryxServerInstallx64_<Version>.exe"
+        }
+        # $RFileName AISFileName
+        $RInstaller     = "RInstaller_<Version>.exe"
+        $AISInstaller   = "AlteryxAISInstall_<Version>.exe"
         # Unattended execution arguments
         if ($Unattended) {
             $Arguments = "/s"
@@ -64,43 +74,57 @@ function Install-Alteryx {
         }
     }
     Process {
-        Write-Log -Type "INFO" -Message "Installation of Alteryx Server $($Properties.Version)"
+        Write-Log -Type "INFO" -Message "Installation of Alteryx $($InstallationProperties.Product) $($Properties.Version)"
         # ------------------------------------------------------------------------------
         # Alteryx Server
-        if ($InstallationProperties.Server -eq $true) {
-            $ServerFileName = [System.String]::Concat($Properties.ServerInstaller, $Properties.Version)
-            $ServerPath = Join-Path -Path $Properties.SrcDirectory -ChildPath "$ServerFileName.exe"
+        # ------------------------------------------------------------------------------
+        if ($InstallationProperties.Product -eq "Designer" -Or $InstallationProperties.Server -eq $true) {
+            # Update file version number
+            $ServerFileName = Set-Tags -String $ServerInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
+            $ServerPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $ServerFileName
             if (Test-Path -Path $ServerPath) {
-                Write-Log -Type "INFO" -Message "Installing Alteryx Server"
+                Write-Log -Type "INFO" -Message "Installing Alteryx $($InstallationProperties.Product)"
                 if ($PSCmdlet.ShouldProcess($ServerPath, "Install")) {
                     $ServerLog = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${ServerFileName}.log"
                     $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Log $ServerLog -Serial $Properties.LicenseEmail -Language $Properties.Language -AllUsers -Unattended:$Unattended
                     Write-Log -Type "DEBUG" -Message $ServerInstall
                     if ($ServerInstall.ExitCode -eq 0) {
-                        Write-Log -Type "CHECK" -Message "Alteryx Server installed successfully"
+                        Write-Log -Type "CHECK" -Message "Alteryx $($InstallationProperties.Product) installed successfully"
                     } else {
                         Write-Log -Type "ERROR" -Message "An error occured during the installation" -ExitCode $ServerInstall.ExitCode
                     }
                 }
             } else {
                 Write-Log -Type "ERROR" -Message "Path not found $ServerPath"
-                Write-Log -Type "ERROR" -Message "Alteryx Server installation file could not be located" -ExitCode 1
+                Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) installation file could not be located" -ExitCode 1
             }
             # Configuration
-            if ($Unattended) {
-                Write-Log -Type "WARN"  -Message "Do not forget to configure system settings"
-            } else {
-                # TODO start system settings
+            if ($InstallationProperties.Product -eq "Server") {
+                if ($Unattended) {
+                    Write-Log -Type "WARN"  -Message "Do not forget to configure system settings"
+                } else {
+                    # TODO start system settings
+                }
             }
         }
         # ------------------------------------------------------------------------------
         # Predictive Tools
+        # ------------------------------------------------------------------------------
         if ($InstallationProperties.PredictiveTools -eq $true) {
-            $RFileName = [System.String]::Concat($Properties.RInstaller, $Properties.Version, ".exe")
-            $RPath = Join-Path -Path $Properties.InstallationPath -ChildPath "RInstaller\$RFileName"
+            # Update file version number
+            $RFileName = Set-Tags -String $RInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
+            if ($InstallationProperties.Product -eq "Server") {
+                # Use embedded R installer
+                $RPath = Join-Path -Path $Properties.InstallationPath -ChildPath "RInstaller\$RFileName"
+            } elseif ($InstallationProperties.Product -eq "Designer") {
+                $RPath = Join-Path -Path $Properties.SrcDirectory -ChildPath $RFileName
+            }
+            # Check source file
             if (Test-Path -Path $RPath) {
                 Write-Log -Type "INFO" -Message "Installing Predictive Tools"
                 if ($PSCmdlet.ShouldProcess($RPath, "Install")) {
+                    $RCommand = (@("&", $RPath, $Arguments) -join " ").Trim()
+                    Write-Log -Type "DEBUG" -Message $RCommand
                     $RInstall = Start-Process -FilePath $RPath -ArgumentList $Arguments -Verb "RunAs" -PassThru -Wait
                     Write-Log -Type "DEBUG" -Message $RInstall
                     if ($RInstall.ExitCode -eq 0) {
@@ -116,12 +140,16 @@ function Install-Alteryx {
         }
         # ------------------------------------------------------------------------------
         # Intelligence Suite
+        # ------------------------------------------------------------------------------
         if ($InstallationProperties.IntelligenceSuite -eq $true) {
-            $AISFileName = [System.String]::Concat($Properties.AISInstaller, $Properties.Version, ".exe")
+            # Update file version number
+            $AISFileName = Set-Tags -String $AISInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
             $AISPath = Join-Path -Path $Properties.SrcDirectory -ChildPath $AISFileName
             if (Test-Path -Path $AISPath) {
                 Write-Log -Type "INFO" -Message "Installing Intelligence Suite"
                 if ($PSCmdlet.ShouldProcess($AISPath, "Install")) {
+                    $AISCommand = (@("&", $AISPath, $Arguments) -join " ").Trim()
+                    Write-Log -Type "DEBUG" -Message $AISCommand
                     $AISInstall = Start-Process -FilePath $AISPath -ArgumentList $Arguments -Verb "RunAs" -PassThru -Wait
                     Write-Log -Type "DEBUG" -Message $AISInstall
                     if ($AISInstall.ExitCode -eq 0) {
@@ -137,12 +165,13 @@ function Install-Alteryx {
         }
         # ------------------------------------------------------------------------------
         # Data packages
+        # ------------------------------------------------------------------------------
         if ($InstallationProperties.DataPackages -eq $true) {
             # TODO
             $DataPackage = $null
             if ($null -ne $DataPackage) {
-                $DataPackagePath = Join-Path -Path $Properties.SrcDirectory -ChildPath "$DataPackage.7z"
-                $DataPackageLog = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${DataPackage}.log"
+                $DataPackagePath    = Join-Path -Path $Properties.SrcDirectory -ChildPath "$DataPackage.7z"
+                $DataPackageLog     = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${DataPackage}.log"
                 if (-Not (Test-Path -Path $DataPackagePath)) {
                     Write-Log -Type "ERROR" -Message "Path not found $DataPackagePath"
                     Write-Log -Type "ERROR" -Message "Data package could not be located" -ExitCode 1
@@ -183,9 +212,10 @@ function Install-Alteryx {
         }
         # ------------------------------------------------------------------------------
         # Licensing
+        # ------------------------------------------------------------------------------
         Invoke-ActivateAlteryx	-Properties $Properties -Unattended:$Unattended
     }
     End {
-        Write-Log -Type "CHECK" -Message "Alteryx Server $($Properties.Version) installed successfully"
+        Write-Log -Type "CHECK" -Message "Alteryx $($InstallationProperties.Product) $($Properties.Version) installed successfully"
     }
 }

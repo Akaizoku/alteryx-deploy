@@ -10,7 +10,7 @@ function Update-Alteryx {
         File name:      Update-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-09-02
-        Last modified:  2021-09-02
+        Last modified:  2021-09-10
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -24,6 +24,14 @@ function Update-Alteryx {
         [ValidateNotNullOrEmpty ()]
         [System.Collections.Specialized.OrderedDictionary]
         $Properties,
+        [Parameter (
+            Position    = 2,
+            Mandatory   = $true,
+            HelpMessage = "Installation properties"
+        )]
+        [ValidateNotNullOrEmpty ()]
+        [System.Collections.Specialized.OrderedDictionary]
+        $InstallationProperties,
         [Parameter (
             HelpMessage = "Non-interactive mode"
         )]
@@ -48,9 +56,9 @@ function Update-Alteryx {
         # Create back-up
         Invoke-BackupAlteryx -Properties $Properties -Unattended:$Unattended
         # Upgrade
-        Install-Alteryx -Properties $Properties -Unattended:$Unattended
+        Install-Alteryx -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended
         # Check for errors
-        if ($Errors.Count -gt 0) {
+        if ($Error.Count -gt 0) {
             Write-Log -Type "ERROR" -Object "Upgrade process failed with $($Errors.Count) errors"
             Write-Log -Type "WARN" -Object "Restoring previous version ($BackupVersion)"
             # Overwrite target version

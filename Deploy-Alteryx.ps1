@@ -29,7 +29,7 @@
 	File name:      Deploy-Alteryx.psm1
 	Author:         Florian Carrier
 	Creation date:  2021-06-13
-	Last modified:  2021-09-03
+	Last modified:  2021-09-10
 	Dependencies:   - PowerShell Tool Kit (PSTK)
 					- Alteryx PowerShell Module (PSAYX)
 
@@ -73,7 +73,7 @@ Param (
 		Mandatory	= $false,
 		HelpMessage	= "Version parameter overwrite"
 	)]
-	[System.Version]
+	[System.String]
 	$Version,
 	[Parameter (
 		Position	= 3,
@@ -82,6 +82,17 @@ Param (
 	)]
 	[String]
 	$BackupPath,
+	[Parameter (
+		Position	= 4,
+		Mandatory	= $false,
+		HelpMessage	= "Product to install"
+	)]
+	[ValidateSet (
+		"Designer",
+		"Server"
+	)]
+	[System.String]
+	$Product = "Server",
 	[Parameter (
 		HelpMessage = "Run script in non-interactive mode"
 	)]
@@ -187,6 +198,7 @@ Begin {
 		"DataPackages"
 	  )
 	$InstallationProperties = Get-Properties -File $Properties.InstallationOptions -Directory $Properties.ConfDirectory -ValidateSet $ValidateSet
+	$InstallationProperties.Add("Product", $Product)
 	# Optional parameters
 	if ($PSBoundParameters.ContainsKey("Version")) {
 		$Properties.Version = $Version
@@ -207,8 +219,8 @@ Process {
 		"show"      { Show-Configuration      	-Properties $Properties -InstallationProperties $InstallationProperties							}
 		"start"     { Invoke-StartAlteryx     	-Properties $Properties -Unattended:$Unattended               }
 		"stop"      { Invoke-StopAlteryx      	-Properties $Properties -Unattended:$Unattended               }
-		"uninstall"	{ Uninstall-Alteryx       	-Properties $Properties -Unattended:$Unattended               }
-		"upgrade"	{ Invoke-UpgradeAlteryx		-Properties $Properties -Unattended:$Unattended               }
+		"uninstall"	{ Uninstall-Alteryx       	-Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended	}
+		"upgrade"	{ Update-Alteryx			-Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended	}
 		default     { Write-Log -Type "ERROR" 	-Message """$Action"" operation is not supported" -ExitCode 1 }
 	}
 }
