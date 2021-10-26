@@ -16,7 +16,7 @@ function Invoke-ActivateAlteryx {
         File name:      Invoke-ActivateAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2021-08-30
+        Last modified:  2021-10-26
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -46,7 +46,7 @@ function Invoke-ActivateAlteryx {
         # Get global preference variables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # License utility
-        $LicenseUtility = Get-AlteryxLicenseUtility -Path (Join-Path -Path $Properties.InstallationPath -ChildPath "bin")
+        $LicenseUtility = Get-AlteryxUtility -Utility "License" -Path $Properties.InstallationPath
     }
     Process {
         Write-Log -Type "INFO" -Message "Activating Alteryx licenses"
