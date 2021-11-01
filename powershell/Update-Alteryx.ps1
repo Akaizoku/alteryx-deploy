@@ -10,7 +10,7 @@ function Update-Alteryx {
         File name:      Update-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-09-02
-        Last modified:  2021-09-10
+        Last modified:  2021-11-01
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -43,7 +43,8 @@ function Update-Alteryx {
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # Retrieve Alteryx Service utility path
         $AlteryxService = Get-AlteryxServerProcess -Process "Service" -InstallDirectory $Properties.InstallationPath
-        # Define error counter
+        # Clear error pipeline
+        $Error.Clear()
     }
     Process {
         Write-Log -Type "CHECK" -Object "Starting Alteryx Server upgrade to $($Properties.Version)"
@@ -59,7 +60,7 @@ function Update-Alteryx {
         Install-Alteryx -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended
         # Check for errors
         if ($Error.Count -gt 0) {
-            Write-Log -Type "ERROR" -Object "Upgrade process failed with $($Errors.Count) errors"
+            Write-Log -Type "ERROR" -Object "Upgrade process failed with $($Error.Count) errors"
             Write-Log -Type "WARN" -Object "Restoring previous version ($BackupVersion)"
             # Overwrite target version
             $Properties.Version = $BackupVersion
