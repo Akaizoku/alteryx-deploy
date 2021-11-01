@@ -3,14 +3,15 @@
 
 <#
 	.SYNOPSIS
-	Setup Alteryx
+	Deploy Alteryx
 
 	.DESCRIPTION
-	Setup and configure Alteryx
+	Deploy and configure Alteryx
 
 	.PARAMETER Action
 	The action parameter corresponds to the operation to perform.
-	Eight options are available:
+
+	Ten options are available:
 	- backup:		backup the Alteryx application database
 	- configure:	configure the Alteryx application
 	- install:		install the Alteryx application
@@ -29,7 +30,7 @@
 	File name:      Deploy-Alteryx.psm1
 	Author:         Florian Carrier
 	Creation date:  2021-06-13
-	Last modified:  2021-09-10
+	Last modified:  2021-11-01
 	Dependencies:   - PowerShell Tool Kit (PSTK)
 					- Alteryx PowerShell Module (PSAYX)
 
@@ -66,7 +67,7 @@ Param (
 		"uninstall",
 		"upgrade"
 	)]
-	[String]
+	[System.String]
 	$Action,
 	[Parameter (
 		Position	= 2,
@@ -80,7 +81,7 @@ Param (
 		Mandatory	= $false,
 		HelpMessage = "Database backup path"
 	)]
-	[String]
+	[System.String]
 	$BackupPath,
 	[Parameter (
 		Position	= 4,
@@ -102,14 +103,14 @@ Param (
 
 Begin {
 	# ----------------------------------------------------------------------------
-	# Global preferences
+	# * Global preferences
 	# ----------------------------------------------------------------------------
 	$ErrorActionPreference	= "Stop"
-	$DebugPreference 		= "Continue"
+	$DebugPreference 		= "SilentlyContinue"
 	Set-StrictMode -Version Latest
 
 	# ----------------------------------------------------------------------------
-	# Global variables
+	# * Global variables
 	# ----------------------------------------------------------------------------
 	# General
 	$ISOTimeStamp       = Get-Date -Format "yyyyMMdd_HHmmss"
@@ -121,28 +122,34 @@ Begin {
 	$CustomProperties   = "custom.ini"
 
 	# ----------------------------------------------------------------------------
-	# Modules
+	# * Modules
 	# ----------------------------------------------------------------------------
-	# List all required modules
-	$Modules = @("PSTK", "PSAYX")
-	foreach ($Module in $Modules) {
-		try {
-			# Check if module is installed
-			Import-Module -Name "$Module" -ErrorAction "Stop" -Force
-			Write-Log -Type "CHECK" -Object "The $Module module was successfully loaded."
-		} catch {
-			# Otherwise check if package is available locally
-			try {
-				Import-Module -Name (Join-Path -Path $LibDirectory -ChildPath "$Module") -ErrorAction "Stop" -Force
-				Write-Log -Type "CHECK" -Object "The $Module module was successfully loaded from the library directory."
-			} catch {
-				Throw "The $Module library could not be loaded. Make sure it has been made available on the machine or manually put it in the ""$LibDirectory"" directory"
-			}
-		}
-	}
+	# Dependencies
+    $Modules = [Ordered]@{
+        "PSTK" 	= "1.2.4"
+		"PSAYX" = "1.0.0"
+    }
+    # Load modules
+    foreach ($Module in $Modules.GetEnumerator()) {
+        try {
+			# Check if package is available locally
+			Import-Module -Name (Join-Path -Path $LibDirectory -ChildPath $Module.Name) -MinimumVersion $Module.Value -ErrorAction "Stop" -Force
+			$Version = (Get-Module -Name $Module.Name).Version
+			Write-Log -Type "CHECK" -Object "The $($Module.Name) module (v$Version) was successfully loaded from the library directory."
+        } catch {
+            try {
+				# Otherwise check if module is installed
+                Import-Module -Name $Module.Name -MinimumVersion $Module.Value -ErrorAction "Stop" -Force
+				$Version = (Get-Module -Name $Module.Name).Version
+				Write-Log -Type "CHECK" -Object "The $($Module.Name) module (v$Version) was successfully loaded."
+            } catch {
+                Throw "The $($Module.Name) module (v$($Module.Value)) could not be loaded. Make sure it has been installed on the machine or packaged in the ""$LibDirectory"" directory"
+            }
+        }
+    }
 
 	# ----------------------------------------------------------------------------
-	# Script configuration
+	# * Script configuration
 	# ----------------------------------------------------------------------------
 	# General settings
 	$Properties = Get-Properties -File $DefaultProperties -Directory $ConfDirectory -Custom $CustomProperties
@@ -159,7 +166,7 @@ Begin {
 	Write-Log -Type "DEBUG" -Message $PSCmdlet.MyInvocation.Line
 
 	# ------------------------------------------------------------------------------
-	# Checks
+	# * Checks
 	# ------------------------------------------------------------------------------
 	# Ensure shell is running as 64 bit process
 	if ([Environment]::Is64BitProcess -eq $false) {
@@ -167,7 +174,7 @@ Begin {
 	}
 
 	# ----------------------------------------------------------------------------
-	# Functions
+	# * Functions
 	# ----------------------------------------------------------------------------
 	# Load PowerShell functions
 	$Functions = Get-ChildItem -Path $Properties.PSDirectory
@@ -178,7 +185,7 @@ Begin {
 	}
 
 	# ----------------------------------------------------------------------------
-	# Variables
+	# * Variables
 	# ----------------------------------------------------------------------------
 	# (Re)load environment variables
 	# Write-Log -Type "DEBUG" -Message "Load environment variables"
@@ -188,7 +195,7 @@ Begin {
 	# }
 
 	# ----------------------------------------------------------------------------
-	# Options
+	# * Options
 	# ----------------------------------------------------------------------------
 	# Installation properties
 	$ValidateSet = @(
@@ -211,17 +218,17 @@ Begin {
 Process {
 	# Check operation to perform
 	switch ($Action) {
-		"activate"  { Invoke-ActivateAlteryx	-Properties $Properties -Unattended:$Unattended               }
-		"backup"    { Invoke-BackupAlteryx    	-Properties $Properties -Unattended:$Unattended               }
+		"activate"  { Invoke-ActivateAlteryx	-Properties $Properties -Unattended:$Unattended               									}
+		"backup"    { Invoke-BackupAlteryx    	-Properties $Properties -Unattended:$Unattended               									}
 		"install"   { Install-Alteryx         	-Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended	}
-		"restart"   { Invoke-RestartAlteryx   	-Properties $Properties -Unattended:$Unattended               }
-		"restore"   { Invoke-RestoreAlteryx   	-Properties $Properties -Unattended:$Unattended               }
+		"restart"   { Invoke-RestartAlteryx   	-Properties $Properties -Unattended:$Unattended               									}
+		"restore"   { Invoke-RestoreAlteryx   	-Properties $Properties -Unattended:$Unattended               									}
 		"show"      { Show-Configuration      	-Properties $Properties -InstallationProperties $InstallationProperties							}
-		"start"     { Invoke-StartAlteryx     	-Properties $Properties -Unattended:$Unattended               }
-		"stop"      { Invoke-StopAlteryx      	-Properties $Properties -Unattended:$Unattended               }
+		"start"     { Invoke-StartAlteryx     	-Properties $Properties -Unattended:$Unattended               									}
+		"stop"      { Invoke-StopAlteryx      	-Properties $Properties -Unattended:$Unattended               									}
 		"uninstall"	{ Uninstall-Alteryx       	-Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended	}
 		"upgrade"	{ Update-Alteryx			-Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended	}
-		default     { Write-Log -Type "ERROR" 	-Message """$Action"" operation is not supported" -ExitCode 1 }
+		default     { Write-Log -Type "ERROR" 	-Message """$Action"" operation is not supported" -ExitCode 1 									}
 	}
 }
 
