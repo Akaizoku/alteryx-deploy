@@ -104,6 +104,7 @@ function Install-Alteryx {
                     Write-Log -Type "WARN"  -Message "Do not forget to configure system settings"
                 } else {
                     # TODO start system settings
+                    Write-Log -Type "WARN"  -Message "Do not forget to configure system settings"
                 }
             }
         }
