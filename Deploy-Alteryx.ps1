@@ -30,7 +30,7 @@
 	File name:      Deploy-Alteryx.psm1
 	Author:         Florian Carrier
 	Creation date:  2021-06-13
-	Last modified:  2021-11-01
+	Last modified:  2021-11-10
 	Dependencies:   - PowerShell Tool Kit (PSTK)
 					- Alteryx PowerShell Module (PSAYX)
 
@@ -106,7 +106,7 @@ Begin {
 	# * Global preferences
 	# ----------------------------------------------------------------------------
 	$ErrorActionPreference	= "Stop"
-	$DebugPreference 		= "SilentlyContinue"
+	# $DebugPreference 		= "SilentlyContinue"
 	Set-StrictMode -Version Latest
 
 	# ----------------------------------------------------------------------------
@@ -134,14 +134,14 @@ Begin {
         try {
 			# Check if package is available locally
 			Import-Module -Name (Join-Path -Path $LibDirectory -ChildPath $Module.Name) -MinimumVersion $Module.Value -ErrorAction "Stop" -Force
-			$Version = (Get-Module -Name $Module.Name).Version
-			Write-Log -Type "CHECK" -Object "The $($Module.Name) module (v$Version) was successfully loaded from the library directory."
+			$ModuleVersion = (Get-Module -Name $Module.Name).Version
+			Write-Log -Type "CHECK" -Object "The $($Module.Name) module (v$ModuleVersion) was successfully loaded from the library directory."
         } catch {
             try {
 				# Otherwise check if module is installed
                 Import-Module -Name $Module.Name -MinimumVersion $Module.Value -ErrorAction "Stop" -Force
-				$Version = (Get-Module -Name $Module.Name).Version
-				Write-Log -Type "CHECK" -Object "The $($Module.Name) module (v$Version) was successfully loaded."
+				$ModuleVersion = (Get-Module -Name $Module.Name).Version
+				Write-Log -Type "CHECK" -Object "The $($Module.Name) module (v$ModuleVersion) was successfully loaded."
             } catch {
                 Throw "The $($Module.Name) module (v$($Module.Value)) could not be loaded. Make sure it has been installed on the machine or packaged in the ""$LibDirectory"" directory"
             }
