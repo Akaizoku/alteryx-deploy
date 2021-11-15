@@ -30,7 +30,7 @@
 	File name:      Deploy-Alteryx.psm1
 	Author:         Florian Carrier
 	Creation date:  2021-06-13
-	Last modified:  2021-11-10
+	Last modified:  2021-11-15
 	Dependencies:   - PowerShell Tool Kit (PSTK)
 					- Alteryx PowerShell Module (PSAYX)
 
@@ -74,6 +74,7 @@ Param (
 		Mandatory	= $false,
 		HelpMessage	= "Version parameter overwrite"
 	)]
+	[ValidateNotNullOrEmpty ()]
 	[System.String]
 	$Version,
 	[Parameter (
@@ -81,7 +82,8 @@ Param (
 		Mandatory	= $false,
 		HelpMessage = "Database backup path"
 	)]
-	[System.String]
+	[ValidateNotNullOrEmpty ()]
+	[System.IO.Path]
 	$BackupPath,
 	[Parameter (
 		Position	= 4,
@@ -92,6 +94,7 @@ Param (
 		"Designer",
 		"Server"
 	)]
+	[ValidateNotNullOrEmpty ()]
 	[System.String]
 	$Product = "Server",
 	[Parameter (
@@ -106,8 +109,7 @@ Begin {
 	# * Global preferences
 	# ----------------------------------------------------------------------------
 	$ErrorActionPreference	= "Stop"
-	# $DebugPreference 		= "SilentlyContinue"
-	Set-StrictMode -Version Latest
+	$ProgressPreference     = "Continue"
 
 	# ----------------------------------------------------------------------------
 	# * Global variables
