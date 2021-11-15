@@ -10,7 +10,7 @@ function Invoke-BackupAlteryx {
         File name:      Invoke-BackupAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-26
-        Last modified:  2021-09-10
+        Last modified:  2021-11-15
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -127,6 +127,9 @@ function Invoke-BackupAlteryx {
         # ----------------------------------------------------------------------------
         # Compress backup
         Write-Log -Type "INFO" -Message "Compress backup files"
+        if (Test-Object -Path $Properties.BackupDirectory -NotFound) {
+            New-Item -Path $Properties.BackupDirectory -ItemType Directory -Force | Out-Null
+        }
         Compress-Archive -Path "$TempBackupPath\*" -DestinationPath $BackupPath -CompressionLevel "Optimal" -WhatIf:$WhatIfPreference
         Write-Log -Type "DEBUG" -Message $BackupPath
         if (Test-Object -Path $BackupPath -NotFound) {
