@@ -16,7 +16,7 @@ function Install-Alteryx {
         File name:      Install-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2021-09-14
+        Last modified:  2021-11-15
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -85,7 +85,7 @@ function Install-Alteryx {
             if (Test-Path -Path $ServerPath) {
                 Write-Log -Type "INFO" -Message "Installing Alteryx $($InstallationProperties.Product)"
                 if ($PSCmdlet.ShouldProcess($ServerPath, "Install")) {
-                    $ServerLog = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${ServerFileName}.log"
+                    $ServerLog = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${ServerPath.BaseName}.log"
                     $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Log $ServerLog -Serial $Properties.LicenseEmail -Language $Properties.Language -AllUsers -Unattended:$Unattended
                     Write-Log -Type "DEBUG" -Message $ServerInstall
                     if ($ServerInstall.ExitCode -eq 0) {
