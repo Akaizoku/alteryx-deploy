@@ -16,7 +16,7 @@ function Uninstall-Alteryx {
         File name:      Uninstall-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2021-09-14
+        Last modified:  2021-11-21
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -70,24 +70,30 @@ function Uninstall-Alteryx {
         # Alteryx Server
         # ------------------------------------------------------------------------------
         # TODO check if Alteryx is installed
+        # Deactivate license keys
+        Invoke-DeactivateAlteryx -Properties $Properties -All -Unattended:$Unattended
         # Update file version number
         $ServerFileName = Set-Tags -String $ServerInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
         $ServerPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $ServerFileName
-        if (Test-Path -Path $ServerPath) {
-            Write-Log -Type "INFO" -Message "Uninstalling Alteryx $($InstallationProperties.Product)"
-            if ($PSCmdlet.ShouldProcess($ServerPath, "Uninstall")) {
-                $ServerLog = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${ServerFileName}.log"
-                $ServerUninstall = Uninstall-AlteryxServer -Path $ServerPath -Log $ServerLog -Unattended:$Unattended
+        Write-Log -Type "INFO" -Message "Uninstalling Alteryx $($InstallationProperties.Product)"
+        if ($PSCmdlet.ShouldProcess($ServerPath, "Uninstall")) {
+            if (Test-Path -Path $ServerPath) {
+                if ($Properties.InstallAwareLog -eq $true) {
+                    $InstallAwareLog = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${ServerFileName}.log"
+                    $ServerUninstall = Uninstall-AlteryxServer -Path $ServerPath -Log $InstallAwareLog -Unattended:$Unattended
+                } else {
+                    $ServerUninstall = Uninstall-AlteryxServer -Path $ServerPath -Unattended:$Unattended
+                }
                 Write-Log -Type "DEBUG" -Message $ServerUninstall
                 if ($ServerUninstall.ExitCode -eq 0) {
                     Write-Log -Type "CHECK" -Message "Alteryx Server uninstalled successfully"
                 } else {
                     Write-Log -Type "ERROR" -Message "An error occured during the uninstallation" -ExitCode $ServerUninstall.ExitCode
                 }
+            } else {
+                Write-Log -Type "ERROR" -Message "Path not found $ServerPath"
+                Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) executable file could not be located" -ExitCode 1
             }
-        } else {
-            Write-Log -Type "ERROR" -Message "Path not found $ServerPath"
-            Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) executable file could not be located" -ExitCode 1
         }
         # TODO enable uninstall of standalone components
         Write-Log -Type "CHECK" -Message "Uninstallation of Alteryx $($InstallationProperties.Product) $Version successfull"

@@ -10,7 +10,7 @@ function Invoke-BackupAlteryx {
         File name:      Invoke-BackupAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-26
-        Last modified:  2021-09-10
+        Last modified:  2021-11-21
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -64,16 +64,18 @@ function Invoke-BackupAlteryx {
         # ----------------------------------------------------------------------------
         # Check Alteryx service status
         Write-Log -Type "INFO" -Message "Check Alteryx Service status"
-        $Service = "AlteryxService"
-        if (Test-Service -Name $Service) {
-            $WindowsService = Get-Service -Name $Service
-            Write-Log -Type "DEBUG" -Message $Service
-            $ServiceStatus = $WindowsService.Status
-            if ($ServiceStatus -eq "Running") {
-                Invoke-StopAlteryx -Properties $Properties -Unattended:$Unattended
+        if ($PSCmdlet.ShouldProcess("Alteryx Service", "Stop")) {
+            $Service = "AlteryxService"
+            if (Test-Service -Name $Service) {
+                $WindowsService = Get-Service -Name $Service
+                Write-Log -Type "DEBUG" -Message $Service
+                $ServiceStatus = $WindowsService.Status
+                if ($ServiceStatus -eq "Running") {
+                    Invoke-StopAlteryx -Properties $Properties -Unattended:$Unattended
+                }
+            } else {
+                Write-Log -Type "ERROR" -Message "Alteryx Service ($Service) could not be found" -ExitCode 1
             }
-        } else {
-            Write-Log -Type "ERROR" -Message "Alteryx Service ($Service) could not be found" -ExitCode 1
         }
         # ----------------------------------------------------------------------------
         # Create database dump
@@ -100,15 +102,16 @@ function Invoke-BackupAlteryx {
         # Backup configuration files
         if ($Backup.Configuration -eq $true) {
             Write-Log -Type "INFO" -Message "Backup configuration files"
-            $ProgramData = Join-Path -Path ([Environment]::GetEnvironmentVariable("ProgramData")) -ChildPath "Alteryx"
-            foreach ($ConfigurationFile in $ConfigurationFiles.GetEnumerator()) {
-                $FilePath = Join-Path -Path $ProgramData -ChildPath $ConfigurationFile.Value
-                if (Test-Object -Path $FilePath) {
-                    if ($PSCmdlet.ShouldProcess($FilePath, "Back-up")) {
+            if ($PSCmdlet.ShouldProcess("Configuration files", "Back-up")) {
+                $ProgramData = Join-Path -Path ([Environment]::GetEnvironmentVariable("ProgramData")) -ChildPath "Alteryx"
+                foreach ($ConfigurationFile in $ConfigurationFiles.GetEnumerator()) {
+                    $FilePath = Join-Path -Path $ProgramData -ChildPath $ConfigurationFile.Value
+                    if (Test-Object -Path $FilePath) {
                         Copy-Object -Path $FilePath -Destination $TempBackupPath -Force
+                    } else {
+                        Write-Log -Type "WARN"  -Message "$($ConfigurationFile.Name) configuration file could not be found"
+                        Write-Log -Type "DEBUG" -Message $FilePath
                     }
-                } else {
-                    Write-Log -Type "WARN" -Message "$($ConfigurationFile.Name) configuration file could not be found ($FilePath)"
                 }
             }
         }
@@ -127,15 +130,20 @@ function Invoke-BackupAlteryx {
         # ----------------------------------------------------------------------------
         # Compress backup
         Write-Log -Type "INFO" -Message "Compress backup files"
-        Compress-Archive -Path "$TempBackupPath\*" -DestinationPath $BackupPath -CompressionLevel "Optimal" -WhatIf:$WhatIfPreference
-        Write-Log -Type "DEBUG" -Message $BackupPath
-        if (Test-Object -Path $BackupPath -NotFound) {
-            Write-Log -Type "ERROR" -Message "Backup files compression failed" -ErrorCode 1
-        } else {
-            # Remove staging folder
-            Write-Log -Type "INFO" -Message "Remove staging backup folder"
-            if ($PSCmdlet.ShouldProcess($TempBackupPath, "Remove")) {
-                Remove-Object -Path $TempBackupPath -Type "Folder"
+        if ($PSCmdlet.ShouldProcess("Compress", "Back-up")) {
+            if (Test-Object -Path $Properties.BackupDirectory -NotFound) {
+                New-Item -Path $Properties.BackupDirectory -ItemType Directory -Force | Out-Null
+            }
+            Compress-Archive -Path "$TempBackupPath\*" -DestinationPath $BackupPath -CompressionLevel "Optimal" -WhatIf:$WhatIfPreference
+            Write-Log -Type "DEBUG" -Message $BackupPath
+            if (Test-Object -Path $BackupPath -NotFound) {
+                Write-Log -Type "ERROR" -Message "Backup files compression failed" -ErrorCode 1
+            } else {
+                # Remove staging folder
+                Write-Log -Type "INFO" -Message "Remove staging backup folder"
+                if ($PSCmdlet.ShouldProcess($TempBackupPath, "Remove")) {
+                    Remove-Object -Path $TempBackupPath -Type "Folder"
+                }
             }
         }
         # ----------------------------------------------------------------------------

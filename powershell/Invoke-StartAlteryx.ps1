@@ -10,7 +10,7 @@ function Invoke-StartAlteryx {
         File name:      Invoke-StartAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2021-07-30
+        Last modified:  2021-11-21
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -36,17 +36,17 @@ function Invoke-StartAlteryx {
         # Variables
         $ServiceName = "AlteryxService"
         # Retrieve Alteryx Service utility path
-        $AlteryxService = Get-AlteryxServerProcess -Process "Service" -InstallDirectory $Properties.InstallationPath
+        $AlteryxService = Get-AlteryxUtility -Utility "Service" -Path $Properties.InstallationPath
     }
     Process {
         Write-Log -Type "INFO" -Message "Starting Alteryx Service"
-        # Check service status
-        $WindowsService = Get-Service -Name $ServiceName
-        Write-Log -Type "DEBUG" -Message $WindowsService
-        if ($WindowsService.Status -eq "Running") {
-            Write-Log -Type "WARN" -Message "Alteryx Service ($ServiceName) is already running"
-        } else {
-            if ($PSCmdlet.ShouldProcess("Alteryx Service", "Start")) {
+        if ($PSCmdlet.ShouldProcess("Alteryx Service", "Start")) {
+            # Check service status
+            $WindowsService = Get-Service -Name $ServiceName
+            Write-Log -Type "DEBUG" -Message $WindowsService
+            if ($WindowsService.Status -eq "Running") {
+                Write-Log -Type "WARN" -Message "Alteryx Service ($ServiceName) is already running"
+            } else {
                 if ($Unattended -eq $false) {
                     $Confirm = Confirm-Prompt -Prompt "Do you want to start the Alteryx Service?"
                 }
@@ -55,8 +55,13 @@ function Invoke-StartAlteryx {
                     $Process = Start-Process -FilePath $AlteryxService -ArgumentList "start" -Verb "RunAs" -PassThru -Wait
                     Write-Log -Type "DEBUG" -Message $Process
                     # Check process outcome
-                    # TODO check why exit code is 2
-                    if ($Process.ExitCode -eq 2) {
+                    if (Compare-Version -Version $Properties.Version -Operator "ge" -Reference "2021.4.1") {
+                        $ExpectedExitCode = 0
+                    } else {
+                        # Do not ask
+                        $ExpectedExitCode = 2
+                    }
+                    if ($Process.ExitCode -eq $ExpectedExitCode) {
                         # Wait for service to start
                         while ((Get-Service -Name $ServiceName).Status -eq "StartPending") {
                             Write-Log -Type "INFO" -Message "Alteryx Service is starting..."
