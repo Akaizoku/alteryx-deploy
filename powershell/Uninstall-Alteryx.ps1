@@ -16,7 +16,7 @@ function Uninstall-Alteryx {
         File name:      Uninstall-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2021-09-14
+        Last modified:  2021-11-21
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -70,14 +70,20 @@ function Uninstall-Alteryx {
         # Alteryx Server
         # ------------------------------------------------------------------------------
         # TODO check if Alteryx is installed
+        # Deactivate license keys
+        Invoke-DeactivateAlteryx -Properties $Properties -All -Unattended:$Unattended
         # Update file version number
         $ServerFileName = Set-Tags -String $ServerInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
         $ServerPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $ServerFileName
         if (Test-Path -Path $ServerPath) {
             Write-Log -Type "INFO" -Message "Uninstalling Alteryx $($InstallationProperties.Product)"
             if ($PSCmdlet.ShouldProcess($ServerPath, "Uninstall")) {
-                $ServerLog = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${ServerFileName}.log"
-                $ServerUninstall = Uninstall-AlteryxServer -Path $ServerPath -Log $ServerLog -Unattended:$Unattended
+                if ($Properties.InstallAwareLog -eq $true) {
+                    $InstallAwareLog = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${ServerFileName}.log"
+                    $ServerUninstall = Uninstall-AlteryxServer -Path $ServerPath -Log $InstallAwareLog -Unattended:$Unattended
+                } else {
+                    $ServerUninstall = Uninstall-AlteryxServer -Path $ServerPath -Unattended:$Unattended
+                }
                 Write-Log -Type "DEBUG" -Message $ServerUninstall
                 if ($ServerUninstall.ExitCode -eq 0) {
                     Write-Log -Type "CHECK" -Message "Alteryx Server uninstalled successfully"
