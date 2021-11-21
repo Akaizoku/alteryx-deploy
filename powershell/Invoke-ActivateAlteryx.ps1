@@ -52,7 +52,6 @@ function Invoke-ActivateAlteryx {
         Write-Log -Type "INFO" -Message "Activating Alteryx license"
         # Check licensing system connectivity
         Write-Log -Type "INFO"  -Message "Checking licensing system connectivity"
-        Write-Log -Type "DEBUG" -Message $Properties.LicensingURL
         if ((Test-HTTPStatus -URI $Properties.LicensingURL) -eq $true) {
             # Activate license
             if ($PSCmdlet.ShouldProcess("Alteryx", "Activate")) {
