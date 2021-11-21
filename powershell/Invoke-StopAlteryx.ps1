@@ -10,7 +10,7 @@ function Invoke-StopAlteryx {
         File name:      Invoke-StopAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2021-08-30
+        Last modified:  2021-11-20
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -36,7 +36,7 @@ function Invoke-StopAlteryx {
         # Variables
         $ServiceName = "AlteryxService"
         # Retrieve Alteryx Service utility path
-        $AlteryxService = Get-AlteryxServerProcess -Process "Service" -InstallDirectory $Properties.InstallationPath
+        $AlteryxService = Get-AlteryxUtility -Utility "Service" -Path $Properties.InstallationPath
     }
     Process {
         Write-Log -Type "INFO" -Message "Stopping Alteryx Service"

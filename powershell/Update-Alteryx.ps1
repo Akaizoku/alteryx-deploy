@@ -10,7 +10,7 @@ function Update-Alteryx {
         File name:      Update-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-09-02
-        Last modified:  2021-11-01
+        Last modified:  2021-11-20
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -42,7 +42,7 @@ function Update-Alteryx {
         # Get global preference vrariables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # Retrieve Alteryx Service utility path
-        $AlteryxService = Get-AlteryxServerProcess -Process "Service" -InstallDirectory $Properties.InstallationPath
+        $AlteryxService = Get-AlteryxUtility -Utility "Service" -Path $Properties.InstallationPath
         # Clear error pipeline
         $Error.Clear()
     }
