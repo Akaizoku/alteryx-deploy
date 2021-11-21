@@ -11,28 +11,30 @@
 	.PARAMETER Action
 	The action parameter corresponds to the operation to perform.
 
-	Ten options are available:
-	- backup:		backup the Alteryx application database
-	- configure:	configure the Alteryx application
-	- install:		install the Alteryx application
-	- restart:		restart the Alteryx application
-	- restore:		restore a backup of the Alteryx application database
-	- show:			display the script configuration
-	- start:		start the Alteryx application
-	- stop:			stop the Alteryx application
-	- uninstall:	uninstall the Alteryx application
-	- upgrade:		upgrade the Alteryx application
+	Eleven options are available:
+	
+    - activate:     activate the Alteryx application license
+    - backup:       backup the Alteryx application database
+    - deactivate:   deactivate the Alteryx application license
+	- install:      install the Alteryx application
+	- restart:      restart the Alteryx application
+	- restore:      restore a backup of the Alteryx application database
+	- show:         display the script configuration
+	- start:        start the Alteryx application
+	- stop:         stop the Alteryx application
+	- uninstall:    uninstall the Alteryx application
+	- upgrade:      upgrade the Alteryx application
 
 	.PARAMETER Unattended
 	The unattended switch define if the script should run in silent mode without any user interaction.
 
 	.NOTES
-	File name:      Deploy-Alteryx.psm1
+	File name:      Deploy-Alteryx.ps1
 	Author:         Florian Carrier
 	Creation date:  2021-06-13
 	Last modified:  2021-11-15
 	Dependencies:   - PowerShell Tool Kit (PSTK)
-					- Alteryx PowerShell Module (PSAYX)
+                    - Alteryx PowerShell Module (PSAYX)
 
 	.LINK
 	https://github.com/Akaizoku/alteryx-deploy
@@ -58,6 +60,7 @@ Param (
 	[ValidateSet (
 		"activate",
 		"backup",
+        "deactivate",
 		"install",
 		"restart",
 		"restore",
@@ -83,7 +86,7 @@ Param (
 		HelpMessage = "Database backup path"
 	)]
 	[ValidateNotNullOrEmpty ()]
-	[System.IO.Path]
+	[System.String]
 	$BackupPath,
 	[Parameter (
 		Position	= 4,
@@ -97,6 +100,18 @@ Param (
 	[ValidateNotNullOrEmpty ()]
 	[System.String]
 	$Product = "Server",
+    [Parameter (
+            Position    = 5,
+            Mandatory   = $false,
+            HelpMessage = "License key(s)"
+        )]
+    [ValidatePattern ("^\w{4}-\w{4}-\w{4}-\w{4}-\w{4}-\w{4}-\w{4}-\w{4}(\s\w{4}-\w{4}-\w{4}-\w{4}-\w{4}-\w{4}-\w{4}-\w{4})*$")]
+    [Alias (
+        "Keys",
+        "Serial"
+    )]
+    [System.String[]]
+    $LicenseKey,
 	[Parameter (
 		HelpMessage = "Run script in non-interactive mode"
 	)]
@@ -129,7 +144,7 @@ Begin {
 	# Dependencies
     $Modules = [Ordered]@{
         "PSTK" 	= "1.2.4"
-		"PSAYX" = "1.0.0"
+		"PSAYX" = "1.0.1"
     }
     # Load modules
     foreach ($Module in $Modules.GetEnumerator()) {
@@ -215,22 +230,29 @@ Begin {
 	if ($PSBoundParameters.ContainsKey("BackupPath")) {
 		$Properties.Add("BackupPath", $BackupPath)
 	}
+    if ($PSBoundParameters.ContainsKey("LicenseKey")) {
+        if ($LicenseKey.Count -eq 1 -And $LicenseKey -match "\s") {
+            $LicenseKey = $LicenseKey.Split(" ")
+        }
+		$Properties.Add("LicenseKey", @($LicenseKey))
+	}
 }
 
 Process {
 	# Check operation to perform
 	switch ($Action) {
-		"activate"  { Invoke-ActivateAlteryx	-Properties $Properties -Unattended:$Unattended               									}
-		"backup"    { Invoke-BackupAlteryx    	-Properties $Properties -Unattended:$Unattended               									}
-		"install"   { Install-Alteryx         	-Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended	}
-		"restart"   { Invoke-RestartAlteryx   	-Properties $Properties -Unattended:$Unattended               									}
-		"restore"   { Invoke-RestoreAlteryx   	-Properties $Properties -Unattended:$Unattended               									}
-		"show"      { Show-Configuration      	-Properties $Properties -InstallationProperties $InstallationProperties							}
-		"start"     { Invoke-StartAlteryx     	-Properties $Properties -Unattended:$Unattended               									}
-		"stop"      { Invoke-StopAlteryx      	-Properties $Properties -Unattended:$Unattended               									}
-		"uninstall"	{ Uninstall-Alteryx       	-Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended	}
-		"upgrade"	{ Update-Alteryx			-Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended	}
-		default     { Write-Log -Type "ERROR" 	-Message """$Action"" operation is not supported" -ExitCode 1 									}
+        "activate"      { Invoke-ActivateAlteryx    -Properties $Properties -Unattended:$Unattended                                                 }
+        "backup"        { Invoke-BackupAlteryx      -Properties $Properties -Unattended:$Unattended                                                 }
+        "deactivate"    { Invoke-DeactivateAlteryx  -Properties $Properties -Unattended:$Unattended                                                 }
+        "install"       { Install-Alteryx           -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
+        "restart"       { Invoke-RestartAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
+        "restore"       { Invoke-RestoreAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
+        "show"          { Show-Configuration        -Properties $Properties -InstallationProperties $InstallationProperties                         }
+        "start"         { Invoke-StartAlteryx       -Properties $Properties -Unattended:$Unattended                                                 }
+        "stop"          { Invoke-StopAlteryx        -Properties $Properties -Unattended:$Unattended                                                 }
+        "uninstall"     { Uninstall-Alteryx         -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
+        "upgrade"       { Update-Alteryx            -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
+        default         { Write-Log -Type "ERROR"   -Message """$Action"" operation is not supported" -ExitCode 1                                   }
 	}
 }
 

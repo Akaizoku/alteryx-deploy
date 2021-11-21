@@ -16,7 +16,7 @@ function Invoke-ActivateAlteryx {
         File name:      Invoke-ActivateAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2021-11-01
+        Last modified:  2021-11-21
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -49,23 +49,26 @@ function Invoke-ActivateAlteryx {
         $LicenseUtility = Get-AlteryxUtility -Utility "License" -Path $Properties.InstallationPath
     }
     Process {
-        Write-Log -Type "INFO" -Message "Activating Alteryx license"
-        # Check licensing system connectivity
-        Write-Log -Type "INFO"  -Message "Checking licensing system connectivity"
-        if ((Test-HTTPStatus -URI $Properties.LicensingURL) -eq $true) {
-            # Activate license
-            if ($PSCmdlet.ShouldProcess("Alteryx", "Activate")) {
+        Write-Log -Type "INFO" -Message "Activating Alteryx"
+        if ($PSCmdlet.ShouldProcess("Alteryx", "Activate")) {
+            # Check licensing system connectivity
+            Write-Log -Type "INFO"  -Message "Checking licensing system connectivity"
+            if ((Test-HTTPStatus -URI $Properties.LicensingURL) -eq $true) {
                 # Check license key(s)
-                if (Test-Object -Path $Properties.LicenseFile -NotFound) {
-                    Write-Log -Type "ERROR" -Message "License file path not found $($Properties.LicenseFile)" -ExitCode 1
+                if (-Not (Find-Key -Hashtable $Properties -Key "LicenseKey")) {
+                    # Read keys from license file
+                    if (Test-Object -Path $Properties.LicenseFile -NotFound) {
+                        Write-Log -Type "ERROR" -Message "License file path not found $($Properties.LicenseFile)" -ExitCode 1
+                    }
+                    $Properties.LicenseKey = @(Get-Content -Path $Properties.LicenseFile)
                 }
-                $Keys = Get-Content -Path $Properties.LicenseFile
-                if ($Keys.Count -gt 1) {
-                    $Success = "$($Keys.Count) licenses were successfully activated"
+                # Count keys
+                if ($Properties.LicenseKey.Count -gt 1) {
+                    $Success = "$($Properties.LicenseKey.Count) licenses were successfully activated"
                     $Failure = "Licenses could not be activated"
-                    $Keys    = $Keys -join " "
-                } elseif ($Keys.Count -eq 1) {
-                    $Success = "$($Keys.Count) license was successfully activated"
+                    $Properties.LicenseKey = $Properties.LicenseKey -join " "
+                } elseif ($Properties.LicenseKey.Count -eq 1) {
+                    $Success = "$($Properties.LicenseKey.Count) license was successfully activated"
                     $Failure = "License could not be activated"
                 } else {
                     Write-Log -Type "ERROR" -Message "No license key was provided" -ExitCode 1
@@ -87,7 +90,7 @@ function Invoke-ActivateAlteryx {
                     $Email = $Properties.LicenseEmail
                 }
                 # Call license utility
-                $Activation = Add-AlteryxLicense -Path $LicenseUtility -Key $Keys -Email $Email
+                $Activation = Add-AlteryxLicense -Path $LicenseUtility -Key $Properties.LicenseKey -Email $Email
                 # Check activation status
                 if (Select-String -InputObject $Activation -Pattern "License(s) successfully activated." -SimpleMatch -Quiet) {
                     Write-Log -Type "CHECK" -Message $Success
@@ -97,11 +100,9 @@ function Invoke-ActivateAlteryx {
                     Write-Log -Type "ERROR" -Message $Failure -ExitCode 1
                 }
             } else {
-                Write-Log -Type "CHECK" -Message $Success
+                Write-Log -Type "ERROR" -Message "Unable to reach licensing system"
+                Write-Log -Type "WARN"  -Message "Skipping license activation"
             }
-        } else {
-            Write-Log -Type "ERROR" -Message "Unable to reach licensing system"
-            Write-Log -Type "WARN"  -Message "Skipping license activation"
         }
     }
 }

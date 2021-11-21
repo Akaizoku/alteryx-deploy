@@ -54,12 +54,12 @@ function Invoke-DeactivateAlteryx {
         $LicenseUtility = Get-AlteryxUtility -Utility "License" -Path $Properties.InstallationPath
     }
     Process {
-        Write-Log -Type "INFO" -Message "Deactivating Alteryx license"
+        Write-Log -Type "INFO" -Message "Deactivating Alteryx"
+        if ($PSCmdlet.ShouldProcess("Alteryx", "Deactivate")) {
         # Check licensing system connectivity
         Write-Log -Type "INFO"  -Message "Checking licensing system connectivity"
         if ((Test-HTTPStatus -URI $Properties.LicensingURL) -eq $true) {
             # Deactivate license
-            if ($PSCmdlet.ShouldProcess("Alteryx", "Deactivate")) {
                 if ($All) {
                     # Remove all license keys
                     $Deactivation = Remove-AlteryxLicense -Path $LicenseUtility
@@ -72,13 +72,20 @@ function Invoke-DeactivateAlteryx {
                     }
                 } else {
                     # Check license key(s)
-                    if (Test-Object -Path $Properties.LicenseFile -NotFound) {
-                        Write-Log -Type "ERROR" -Message "License file path not found $($Properties.LicenseFile)" -ExitCode 1
+                    if (-Not (Find-Key -Hashtable $Properties -Key "LicenseKey")) {
+                        # Read keys from license file
+                        if (Test-Object -Path $Properties.LicenseFile -NotFound) {
+                            Write-Log -Type "ERROR" -Message "License file path not found $($Properties.LicenseFile)" -ExitCode 1
+                        }
+                        $Properties.LicenseKey = @(Get-Content -Path $Properties.LicenseFile)
+                    }
+                    if ($Properties.LicenseKey.Count -eq 0) {
+                        Write-Log -Type "ERROR" -Message "No license key was provided" -ExitCode 1
                     }
                     # Deactivate each key
-                    $Keys   = Get-Content -Path $Properties.LicenseFile
-                    $Count  = 0
-                    foreach ($Key in $Keys) {
+                    $Count = 0
+                    foreach ($Key in $Properties.LicenseKey) {
+                        Write-Log -Type "INFO" -Message "Deactivating license key $Key"
                         $Dectivation = Remove-AlteryxLicense -Path $LicenseUtility -Key $Key
                         # Check deactivation status
                         if (Select-String -InputObject $Dectivation -Pattern "License(s) successfully removed." -SimpleMatch -Quiet) {
@@ -89,26 +96,30 @@ function Invoke-DeactivateAlteryx {
                         }
                     }
                     # Check outcome
-                    if ($Keys.Count -gt 1) {
-                        $Success = "$($Keys.Count) licenses were successfully deactivated"
-                        $ErrorCount = $Keys.Count - $Count
-                        $Failure = "$ErrorCount out of $($Keys.Count) licenses could not be deactivated"
-                    } elseif ($Keys.Count -eq 1) {
-                        $Success = "$($Keys.Count) license was successfully deactivated"
+                    if ($Properties.LicenseKey.Count -gt 1) {
+                        $Success = "$($Properties.LicenseKey.Count) licenses were successfully deactivated"
+                        $ErrorCount = $Properties.LicenseKey.Count - $Count
+                        if ($ErrorCount -eq $Properties.LicenseKey.Count) {
+                            $Failure = "None of the licenses could not be deactivated"
+                        } else {
+                            $Failure = "$ErrorCount out of $($Properties.LicenseKey.Count) licenses could not be deactivated"
+                        }
+                    } elseif ($Properties.LicenseKey.Count -eq 1) {
+                        $Success = "$($Properties.LicenseKey.Count) license was successfully deactivated"
                         $Failure = "License could not be deactivated"
-                    } else {
-                        Write-Log -Type "ERROR" -Message "No license key was provided" -ExitCode 1
                     }
-                    if ($Count -eq $Keys.Count) {
+                    if ($Count -eq $Properties.LicenseKey.Count) {
                         Write-Log -Type "CHECK" -Message $Success
-                    } else {
+                    } elseif ($ErrorCount -eq $Properties.LicenseKey.Count) {
                         Write-Log -Type "ERROR" -Message $Failure
+                    } else {
+                        Write-Log -Type "WARN" -Message $Failure
                     }
                 }
+            } else {
+                Write-Log -Type "ERROR" -Message "Unable to reach licensing system"
+                Write-Log -Type "WARN"  -Message "Skipping license deactivation"
             }
-        } else {
-            Write-Log -Type "ERROR" -Message "Unable to reach licensing system"
-            Write-Log -Type "WARN"  -Message "Skipping license deactivation"
         }
     }
 }
