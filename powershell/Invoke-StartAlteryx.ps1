@@ -40,13 +40,13 @@ function Invoke-StartAlteryx {
     }
     Process {
         Write-Log -Type "INFO" -Message "Starting Alteryx Service"
-        # Check service status
-        $WindowsService = Get-Service -Name $ServiceName
-        Write-Log -Type "DEBUG" -Message $WindowsService
-        if ($WindowsService.Status -eq "Running") {
-            Write-Log -Type "WARN" -Message "Alteryx Service ($ServiceName) is already running"
-        } else {
-            if ($PSCmdlet.ShouldProcess("Alteryx Service", "Start")) {
+        if ($PSCmdlet.ShouldProcess("Alteryx Service", "Start")) {
+            # Check service status
+            $WindowsService = Get-Service -Name $ServiceName
+            Write-Log -Type "DEBUG" -Message $WindowsService
+            if ($WindowsService.Status -eq "Running") {
+                Write-Log -Type "WARN" -Message "Alteryx Service ($ServiceName) is already running"
+            } else {
                 if ($Unattended -eq $false) {
                     $Confirm = Confirm-Prompt -Prompt "Do you want to start the Alteryx Service?"
                 }

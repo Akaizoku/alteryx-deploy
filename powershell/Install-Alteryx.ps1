@@ -82,9 +82,9 @@ function Install-Alteryx {
             # Update file version number
             $ServerFileName = Set-Tags -String $ServerInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
             $ServerPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $ServerFileName
-            if (Test-Path -Path $ServerPath) {
-                Write-Log -Type "INFO" -Message "Installing Alteryx $($InstallationProperties.Product)"
-                if ($PSCmdlet.ShouldProcess($ServerPath, "Install")) {
+            Write-Log -Type "INFO" -Message "Installing Alteryx $($InstallationProperties.Product)"
+            if ($PSCmdlet.ShouldProcess($ServerPath, "Install")) {
+                if (Test-Path -Path $ServerPath) {
                     if ($Properties.InstallAwareLog -eq $true) {
                         $InstallAwareLog = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${ServerFileName}.log"
                         $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Log $InstallAwareLog -Serial $Properties.LicenseEmail -Language $Properties.Language -AllUsers -Unattended:$Unattended
@@ -97,10 +97,10 @@ function Install-Alteryx {
                     } else {
                         Write-Log -Type "ERROR" -Message "An error occured during the installation" -ExitCode $ServerInstall.ExitCode
                     }
+                } else {
+                    Write-Log -Type "ERROR" -Message "Path not found $ServerPath"
+                    Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) installation file could not be located" -ExitCode 1
                 }
-            } else {
-                Write-Log -Type "ERROR" -Message "Path not found $ServerPath"
-                Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) installation file could not be located" -ExitCode 1
             }
             # Configuration
             if ($InstallationProperties.Product -eq "Server") {
@@ -125,9 +125,9 @@ function Install-Alteryx {
                 $RPath = Join-Path -Path $Properties.SrcDirectory -ChildPath $RFileName
             }
             # Check source file
-            if (Test-Path -Path $RPath) {
-                Write-Log -Type "INFO" -Message "Installing Predictive Tools"
-                if ($PSCmdlet.ShouldProcess($RPath, "Install")) {
+            Write-Log -Type "INFO" -Message "Installing Predictive Tools"
+            if ($PSCmdlet.ShouldProcess($RPath, "Install")) {
+                if (Test-Path -Path $RPath) {
                     $RCommand = (@("&", $RPath, $Arguments) -join " ").Trim()
                     Write-Log -Type "DEBUG" -Message $RCommand
                     $RInstall = Start-Process -FilePath $RPath -ArgumentList $Arguments -Verb "RunAs" -PassThru -Wait
@@ -137,10 +137,10 @@ function Install-Alteryx {
                     } else {
                         Write-Log -Type "ERROR" -Message "An error occured during the installation" -ExitCode $RInstall.ExitCode
                     }
+                } else {
+                    Write-Log -Type "ERROR" -Message "Path not found $RPath"
+                    Write-Log -Type "ERROR" -Message "Predictive Tools installation file could not be located" -ExitCode 1
                 }
-            } else {
-                Write-Log -Type "ERROR" -Message "Path not found $RPath"
-                Write-Log -Type "ERROR" -Message "Predictive Tools installation file could not be located" -ExitCode 1
             }
         }
         # ------------------------------------------------------------------------------
@@ -150,9 +150,9 @@ function Install-Alteryx {
             # Update file version number
             $AISFileName = Set-Tags -String $AISInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
             $AISPath = Join-Path -Path $Properties.SrcDirectory -ChildPath $AISFileName
-            if (Test-Path -Path $AISPath) {
-                Write-Log -Type "INFO" -Message "Installing Intelligence Suite"
-                if ($PSCmdlet.ShouldProcess($AISPath, "Install")) {
+            Write-Log -Type "INFO" -Message "Installing Intelligence Suite"
+            if ($PSCmdlet.ShouldProcess($AISPath, "Install")) {
+                if (Test-Path -Path $AISPath) {
                     $AISCommand = (@("&", $AISPath, $Arguments) -join " ").Trim()
                     Write-Log -Type "DEBUG" -Message $AISCommand
                     $AISInstall = Start-Process -FilePath $AISPath -ArgumentList $Arguments -Verb "RunAs" -PassThru -Wait
@@ -162,10 +162,10 @@ function Install-Alteryx {
                     } else {
                         Write-Log -Type "ERROR" -Message "An error occured during the installation" -ExitCode $AISInstall.ExitCode
                     }
+                } else {
+                    Write-Log -Type "ERROR" -Message "Path not found $AISPath"
+                    Write-Log -Type "ERROR" -Message "Alteryx Intelligence Suite installation file could not be located" -ExitCode 1
                 }
-            } else {
-                Write-Log -Type "ERROR" -Message "Path not found $AISPath"
-                Write-Log -Type "ERROR" -Message "Alteryx Intelligence Suite installation file could not be located" -ExitCode 1
             }
         }
         # ------------------------------------------------------------------------------
@@ -218,7 +218,7 @@ function Install-Alteryx {
         # ------------------------------------------------------------------------------
         # Licensing
         # ------------------------------------------------------------------------------
-        Invoke-ActivateAlteryx	-Properties $Properties -Unattended:$Unattended
+        Invoke-ActivateAlteryx -Properties $Properties -Unattended:$Unattended
     }
     End {
         Write-Log -Type "CHECK" -Message "Alteryx $($InstallationProperties.Product) $($Properties.Version) installed successfully"

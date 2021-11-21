@@ -75,9 +75,9 @@ function Uninstall-Alteryx {
         # Update file version number
         $ServerFileName = Set-Tags -String $ServerInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
         $ServerPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $ServerFileName
-        if (Test-Path -Path $ServerPath) {
-            Write-Log -Type "INFO" -Message "Uninstalling Alteryx $($InstallationProperties.Product)"
-            if ($PSCmdlet.ShouldProcess($ServerPath, "Uninstall")) {
+        Write-Log -Type "INFO" -Message "Uninstalling Alteryx $($InstallationProperties.Product)"
+        if ($PSCmdlet.ShouldProcess($ServerPath, "Uninstall")) {
+            if (Test-Path -Path $ServerPath) {
                 if ($Properties.InstallAwareLog -eq $true) {
                     $InstallAwareLog = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${ServerFileName}.log"
                     $ServerUninstall = Uninstall-AlteryxServer -Path $ServerPath -Log $InstallAwareLog -Unattended:$Unattended
@@ -90,10 +90,10 @@ function Uninstall-Alteryx {
                 } else {
                     Write-Log -Type "ERROR" -Message "An error occured during the uninstallation" -ExitCode $ServerUninstall.ExitCode
                 }
+            } else {
+                Write-Log -Type "ERROR" -Message "Path not found $ServerPath"
+                Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) executable file could not be located" -ExitCode 1
             }
-        } else {
-            Write-Log -Type "ERROR" -Message "Path not found $ServerPath"
-            Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) executable file could not be located" -ExitCode 1
         }
         # TODO enable uninstall of standalone components
         Write-Log -Type "CHECK" -Message "Uninstallation of Alteryx $($InstallationProperties.Product) $Version successfull"
