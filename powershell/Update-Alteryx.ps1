@@ -10,7 +10,7 @@ function Update-Alteryx {
         File name:      Update-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-09-02
-        Last modified:  2021-11-20
+        Last modified:  2021-11-22
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -45,29 +45,31 @@ function Update-Alteryx {
         $AlteryxService = Get-AlteryxUtility -Utility "Service" -Path $Properties.InstallationPath
         # Clear error pipeline
         $Error.Clear()
+        # Retrieve current version
+        Write-Log -Type "DEBUG" -Object "Retrieving current version"
+        if ($PSCmdlet.ShouldProcess("Alteryx version", "Retrieve")) {
+            $AlteryxVersion = Get-AlteryxVersion -Path $AlteryxService
+            Write-Log -Type "DEBUG" -Object $AlteryxVersion
+            $BackupVersion = Select-String -InputObject $AlteryxVersion -Pattern "\d+\.\d+.\d+(.\d+)?" | ForEach-Object { $PSItem.Matches.Value }
+        }
     }
     Process {
-        Write-Log -Type "CHECK" -Object "Starting Alteryx Server upgrade to $($Properties.Version)"
-        # Retrieve current version
-        Write-Log -Type "INFO" -Object "Retrieving current version"
-        if ($PSCmdlet.ShouldProcess("Alteryx version", "Retrieve")) {
-            $BackupVersion = Get-AlteryxVersion -Path $AlteryxService
-        }
-        Write-Log -Type "DEBUG" -Object $BackupVersion
+        Write-Log -Type "CHECK" -Object "Starting Alteryx Server upgrade from $BackupVersion to $($Properties.Version)"
         # Create back-up
-        Invoke-BackupAlteryx -Properties $Properties -Unattended:$Unattended
+        $BackUpProperties = Copy-OrderedHashtable -Hashtable $Properties
+        $BackUpProperties.Version = $BackupVersion
+        Invoke-BackupAlteryx -Properties $BackUpProperties -Unattended:$Unattended
         # Upgrade
         Install-Alteryx -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended
         # Check for errors
         if ($Error.Count -gt 0) {
+            # Rollback
             Write-Log -Type "ERROR" -Object "Upgrade process failed with $($Error.Count) errors"
             Write-Log -Type "WARN" -Object "Restoring previous version ($BackupVersion)"
-            # Overwrite target version
-            $Properties.Version = $BackupVersion
             # Reinstall Alteryx
-            Install-Alteryx -Properties $Properties -Unattended:$Unattended
+            Install-Alteryx -Properties $BackUpProperties -Unattended:$Unattended
             # Restore backup
-            Invoke-RestoreAlteryx -Properties $Properties -Unattended:$Unattended
+            Invoke-RestoreAlteryx -Properties $BackUpProperties -Unattended:$Unattended
         } else {
             Write-Log -Type "CHECK" -Object "Alteryx Server upgrade completed successfully"
         }
