@@ -10,7 +10,7 @@ function Invoke-BackupAlteryx {
         File name:      Invoke-BackupAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-26
-        Last modified:  2021-11-21
+        Last modified:  2021-11-22
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -35,8 +35,8 @@ function Invoke-BackupAlteryx {
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # Variables
         $ISOTimeStamp   = Get-Date  -Format "yyyyMMdd_HHmmss"
-        $BackupPath     = Join-Path -Path $Properties.BackupDirectory   -ChildPath "${ISOTimeStamp}_Alteryx_Server.zip"
-        $TempBackupPath = Join-Path -Path $Properties.TempDirectory     -ChildPath "${ISOTimeStamp}_Alteryx_Server"
+        $BackupPath     = Join-Path -Path $Properties.BackupDirectory   -ChildPath "${ISOTimeStamp}_Alteryx_Server_$($Properties.Version).zip"
+        $TempBackupPath = Join-Path -Path $Properties.TempDirectory     -ChildPath "${ISOTimeStamp}_Alteryx_Server_$($Properties.Version)"
         $MongoDBPath    = Join-Path -Path $TempBackupPath               -ChildPath "MongoDB"
         $ServicePath    = Join-Path -Path $Properties.InstallationPath  -ChildPath "bin\AlteryxService.exe"
         # Backup options
