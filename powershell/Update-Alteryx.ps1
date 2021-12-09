@@ -10,7 +10,7 @@ function Update-Alteryx {
         File name:      Update-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-09-02
-        Last modified:  2021-11-22
+        Last modified:  2021-12-08
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -52,6 +52,8 @@ function Update-Alteryx {
             Write-Log -Type "DEBUG" -Object $AlteryxVersion
             $BackupVersion = Select-String -InputObject $AlteryxVersion -Pattern "\d+\.\d+.\d+(.\d+)?" | ForEach-Object { $PSItem.Matches.Value }
         }
+        # Set upgrade activation option
+        $Properties.ActivateOnInstall = $Properties.ActivateOnUpgrade
     }
     Process {
         Write-Log -Type "CHECK" -Object "Starting Alteryx Server upgrade from $BackupVersion to $($Properties.Version)"

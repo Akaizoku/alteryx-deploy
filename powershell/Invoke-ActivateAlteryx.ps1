@@ -16,7 +16,7 @@ function Invoke-ActivateAlteryx {
         File name:      Invoke-ActivateAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2021-11-21
+        Last modified:  2021-12-08
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -56,9 +56,15 @@ function Invoke-ActivateAlteryx {
             if ((Test-HTTPStatus -URI $Properties.LicensingURL) -eq $true) {
                 # Check license key(s)
                 if (-Not (Find-Key -Hashtable $Properties -Key "LicenseKey")) {
+                    # Check license file
+                    if ($null -eq $Properties.LicenseFile -Or $Properties.LicenseFile -eq "") {
+                        Write-Log -Type "ERROR" -Message "No license key or file have been specified"
+                        Write-Log -Type "WARN"  -Message "Alteryx product activation failed" -ExitCode 1
+                    }
                     # Read keys from license file
                     if (Test-Object -Path $Properties.LicenseFile -NotFound) {
-                        Write-Log -Type "ERROR" -Message "License file path not found $($Properties.LicenseFile)" -ExitCode 1
+                        Write-Log -Type "ERROR" -Message "License file path not found $($Properties.LicenseFile)"
+                        Write-Log -Type "WARN"  -Message "Alteryx product activation failed" -ExitCode 1
                     }
                     $Properties.LicenseKey = @(Get-Content -Path $Properties.LicenseFile)
                 }
@@ -71,10 +77,11 @@ function Invoke-ActivateAlteryx {
                     $Success = "$($Properties.LicenseKey.Count) license was successfully activated"
                     $Failure = "License could not be activated"
                 } else {
-                    Write-Log -Type "ERROR" -Message "No license key was provided" -ExitCode 1
+                    Write-Log -Type "ERROR" -Message "No license key was provided"
+                    Write-Log -Type "WARN"  -Message "Alteryx product activation failed" -ExitCode 1
                 }
                 # Check email address
-                if ($null -eq $Properties.LicenseEmail) {
+                if ($null -eq $Properties.LicenseEmail -Or $Properties.LicenseEmail -eq "") {
                     if ($Unattended) {
                         Write-Log -Type "ERROR" -Message "No email address provided for license activation"
                         Write-Log -Type "WARN"  -Message "Retrieving email address associated with current session through Windows Active Directory"
@@ -89,7 +96,9 @@ function Invoke-ActivateAlteryx {
                 } else {
                     $Email = $Properties.LicenseEmail
                 }
+                # TODO check email format
                 # Call license utility
+                Write-Log -Type "INFO" -Message "Activating license(s)"
                 $Activation = Add-AlteryxLicense -Path $LicenseUtility -Key $Properties.LicenseKey -Email $Email
                 # Check activation status
                 if (Select-String -InputObject $Activation -Pattern "License(s) successfully activated." -SimpleMatch -Quiet) {
@@ -101,7 +110,7 @@ function Invoke-ActivateAlteryx {
                 }
             } else {
                 Write-Log -Type "ERROR" -Message "Unable to reach licensing system"
-                Write-Log -Type "WARN"  -Message "Skipping license activation"
+                Write-Log -Type "WARN"  -Message "Skipping product activation"
             }
         }
     }

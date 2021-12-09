@@ -16,7 +16,7 @@ function Install-Alteryx {
         File name:      Install-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2021-11-20
+        Last modified:  2021-12-08
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -87,9 +87,17 @@ function Install-Alteryx {
                 if (Test-Path -Path $ServerPath) {
                     if ($Properties.InstallAwareLog -eq $true) {
                         $InstallAwareLog = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${ServerFileName}.log"
-                        $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Log $InstallAwareLog -Serial $Properties.LicenseEmail -Language $Properties.Language -AllUsers -Unattended:$Unattended
+                        if ($null -eq $Properties.LicenseEmail -Or $Properties.LicenseEmail -eq "") {
+                            $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Log $InstallAwareLog -Language $Properties.Language -AllUsers -Unattended:$Unattended
+                        } else {
+                            $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Log $InstallAwareLog -Serial $Properties.LicenseEmail -Language $Properties.Language -AllUsers -Unattended:$Unattended
+                        }
                     } else {
-                        $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Serial $Properties.LicenseEmail -Language $Properties.Language -AllUsers -Unattended:$Unattended
+                        if ($null -eq $Properties.LicenseEmail -Or $Properties.LicenseEmail -eq "") {
+                            $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Language $Properties.Language -AllUsers -Unattended:$Unattended
+                        } else {
+                            $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Serial $Properties.LicenseEmail -Language $Properties.Language -AllUsers -Unattended:$Unattended
+                        }
                     }
                     Write-Log -Type "DEBUG" -Message $ServerInstall
                     if ($ServerInstall.ExitCode -eq 0) {
@@ -99,7 +107,8 @@ function Install-Alteryx {
                     }
                 } else {
                     Write-Log -Type "ERROR" -Message "Path not found $ServerPath"
-                    Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) installation file could not be located" -ExitCode 1
+                    Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) installation file could not be located"
+                    Write-Log -Type "WARN" -Message "Alteryx installation failed" -ExitCode 1
                 }
             }
             # Configuration
@@ -139,7 +148,8 @@ function Install-Alteryx {
                     }
                 } else {
                     Write-Log -Type "ERROR" -Message "Path not found $RPath"
-                    Write-Log -Type "ERROR" -Message "Predictive Tools installation file could not be located" -ExitCode 1
+                    Write-Log -Type "ERROR" -Message "Predictive Tools installation file could not be located"
+                    Write-Log -Type "WARN"  -Message "Predictive Tools installation failed" -ExitCode 1
                 }
             }
         }
@@ -164,7 +174,8 @@ function Install-Alteryx {
                     }
                 } else {
                     Write-Log -Type "ERROR" -Message "Path not found $AISPath"
-                    Write-Log -Type "ERROR" -Message "Alteryx Intelligence Suite installation file could not be located" -ExitCode 1
+                    Write-Log -Type "ERROR" -Message "Intelligence Suite installation file could not be located"
+                    Write-Log -Type "WARN"  -Message "Intelligence Suite installation failed" -ExitCode 1
                 }
             }
         }
@@ -179,7 +190,8 @@ function Install-Alteryx {
                 $DataPackageLog     = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${DataPackage}.log"
                 if (-Not (Test-Path -Path $DataPackagePath)) {
                     Write-Log -Type "ERROR" -Message "Path not found $DataPackagePath"
-                    Write-Log -Type "ERROR" -Message "Data package could not be located" -ExitCode 1
+                    Write-Log -Type "ERROR" -Message "Data package could not be located"
+                    Write-Log -Type "WARN"  -Message "Data package installation failed" -ExitCode 1
                 }
                 # Unzip data package
                 $Destination = $DataPackagePath.Replace('.7z', '')
@@ -195,7 +207,8 @@ function Install-Alteryx {
                         }
                     } else {
                         Write-Log -Type "ERROR" -Message "Path not found $($Properties.'7zipPath')"
-                        Write-Log -Type "ERROR" -Message "7zip could not be located" -ExitCode 1
+                        Write-Log -Type "ERROR" -Message "7zip could not be located"
+                        Write-Log -Type "WARN" -Message "Data package installation failed" -ExitCode 1
                     }
                     # ! TODO check unzip
                     Write-Log -Type "DEBUG" -Message $Unzip
@@ -209,7 +222,8 @@ function Install-Alteryx {
                     }
                 } else {
                     Write-Log -Type "ERROR" -Message "Path not found $Destination"
-                    Write-Log -Type "ERROR" -Message "Data package unzipping failed" -ExitCode 1
+                    Write-Log -Type "ERROR" -Message "Data package unzipping failed"
+                    Write-Log -Type "WARN"  -Message "Data package installation failed" -ExitCode 1
                 }
             } else {
                 Write-Log -Type "DEBUG" -Message "No data package specified"
@@ -218,7 +232,11 @@ function Install-Alteryx {
         # ------------------------------------------------------------------------------
         # Licensing
         # ------------------------------------------------------------------------------
-        Invoke-ActivateAlteryx -Properties $Properties -Unattended:$Unattended
+        if ($Properties.ActivateOnInstall -eq $true) {
+            Invoke-ActivateAlteryx -Properties $Properties -Unattended:$Unattended
+        } else {
+            Write-Log -Type "WARN" -Message "Skipping license activation"
+        }
     }
     End {
         Write-Log -Type "CHECK" -Message "Alteryx $($InstallationProperties.Product) $($Properties.Version) installed successfully"
