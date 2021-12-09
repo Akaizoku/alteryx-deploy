@@ -16,7 +16,7 @@ function Invoke-ActivateAlteryx {
         File name:      Invoke-ActivateAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2021-12-08
+        Last modified:  2021-12-09
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -72,10 +72,12 @@ function Invoke-ActivateAlteryx {
                 if ($Properties.LicenseKey.Count -gt 1) {
                     $Success = "$($Properties.LicenseKey.Count) licenses were successfully activated"
                     $Failure = "Licenses could not be activated"
+                    $Grammar = "licenses"
                     $Properties.LicenseKey = $Properties.LicenseKey -join " "
                 } elseif ($Properties.LicenseKey.Count -eq 1) {
                     $Success = "$($Properties.LicenseKey.Count) license was successfully activated"
                     $Failure = "License could not be activated"
+                    $Grammar = "license"
                 } else {
                     Write-Log -Type "ERROR" -Message "No license key was provided"
                     Write-Log -Type "WARN"  -Message "Alteryx product activation failed" -ExitCode 1
@@ -85,8 +87,13 @@ function Invoke-ActivateAlteryx {
                     if ($Unattended) {
                         Write-Log -Type "ERROR" -Message "No email address provided for license activation"
                         Write-Log -Type "WARN"  -Message "Retrieving email address associated with current session through Windows Active Directory"
-                        $Email = Get-ADUser -Identity $env:UserName -Properties "mail" | Select-Object -ExpandProperty "mail"
-                        Write-Log -Type "DEBUG" -Message $Email
+                        try {
+                            $Email = Get-ADUser -Identity $env:UserName -Properties "mail" | Select-Object -ExpandProperty "mail"
+                            Write-Log -Type "DEBUG" -Message $Email
+                        } catch {
+                            Write-Log -Type "ERROR" -Message $Error[0].Exception
+                            $Email = $null
+                        }
                     } else {
                         # Prompt for email address and validate format
                         do {
@@ -97,16 +104,21 @@ function Invoke-ActivateAlteryx {
                     $Email = $Properties.LicenseEmail
                 }
                 # TODO check email format
-                # Call license utility
-                Write-Log -Type "INFO" -Message "Activating license(s)"
-                $Activation = Add-AlteryxLicense -Path $LicenseUtility -Key $Properties.LicenseKey -Email $Email
-                # Check activation status
-                if (Select-String -InputObject $Activation -Pattern "License(s) successfully activated." -SimpleMatch -Quiet) {
-                    Write-Log -Type "CHECK" -Message $Success
+                if ($Email -as [System.Net.Mail.MailAddress]) {
+                    # Call license utility
+                    Write-Log -Type "INFO" -Message "Activating $Grammar"
+                    $Activation = Add-AlteryxLicense -Path $LicenseUtility -Key $Properties.LicenseKey -Email $Email
+                    # Check activation status
+                    if (Select-String -InputObject $Activation -Pattern "License(s) successfully activated." -SimpleMatch -Quiet) {
+                        Write-Log -Type "CHECK" -Message $Success
+                    } else {
+                        # Output error and stop script
+                        Write-Log -Type "ERROR" -Message $Activation
+                        Write-Log -Type "ERROR" -Message $Failure -ExitCode 1
+                    }
                 } else {
-                    # Output error and stop script
-                    Write-Log -Type "ERROR" -Message $Activation
-                    Write-Log -Type "ERROR" -Message $Failure -ExitCode 1
+                    Write-Log -Type "ERROR" -Message "Email address is missing or invalid"
+                    Write-Log -Type "WARN"  -Message "Skipping product activation"
                 }
             } else {
                 Write-Log -Type "ERROR" -Message "Unable to reach licensing system"
