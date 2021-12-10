@@ -142,11 +142,23 @@ function Invoke-RestoreAlteryx {
         $RunTimeSettingsXML.Load($ConfigurationFiles.RunTimeSettings)
         # Gallery URL
         $BaseAddress = Select-XMLNode -XML $RunTimeSettingsXML -XPath "SystemSettings/Gallery/BaseAddress"
-        if ($BaseAddress.InnerText -match "https?://localhost/?.*") {
-            Write-Log -Type "INFO" -Message "Configuring base Gallery URL"
-            $NewBaseAddress = $BaseAddress.InnerText -replace "localhost", $env:ComputerName
-            Write-Log -Type "DEBUG" -Message $NewBaseAddress
-            $BaseAddress.InnerText = $NewBaseAddress
+        if ($BaseAddress.InnerText -match "https?://.+?/gallery") {
+            # Assume this is a hostname
+            $BaseAddressMatch   = Select-String -InputObject $BaseAddress.InnerText -Pattern "https?://(.+?)/gallery"
+            $SourceHostname     = $BaseAddressMatch.Matches.Groups[1].Value
+            $NewHostname        = $env:ComputerName
+            if ($SourceHostname -ne $NewHostname) {
+                Write-Log -Type "INFO"  -Message "Updating hostname"
+                # Update base Gallery URL
+                Write-Log -Type "DEBUG" -Message "Source=$SourceHostname"
+                Write-Log -Type "DEBUG" -Message "Destination=$NewHostname"
+                $NewBaseAddress = $BaseAddress.InnerText.Replace($SourceHostname, $NewHostname)
+                Write-Log -Type "DEBUG" -Message $NewBaseAddress
+                $BaseAddress.InnerText = $NewBaseAddress
+                # Update authentication URL
+                $ServiceProviderEntityID = Select-XMLNode -XML $RunTimeSettingsXML -XPath "SystemSettings/Authentication/ServiceProviderEntityID"
+                $ServiceProviderEntityID.InnerText = $ServiceProviderEntityID.InnerText.Replace($SourceHostname, $NewHostname)
+            }
         }
         # SSL
         if ($Properties.EnableSSL -eq $true) {
@@ -185,14 +197,14 @@ function Invoke-RestoreAlteryx {
         $WorkingPath = Select-XMLNode -XML $RunTimeSettingsXML -XPath "SystemSettings/Environment/WorkingPath"
         if ($WorkingPath.InnerText -ne $Properties.InstallationPath) {
             Write-Log -Type "INFO"  -Message "Updating installation paths"
-            Write-Log -Type "DEBUG" -Message "Original=$($WorkingPath.InnerText)"
-            Write-Log -Type "DEBUG" -Message "New=$($Properties.InstallationPath)"
+            Write-Log -Type "DEBUG" -Message "Source=$($WorkingPath.InnerText)"
+            Write-Log -Type "DEBUG" -Message "Destination=$($Properties.InstallationPath)"
             $RunTimeSettings = Get-Content -Path $ConfigurationFiles.RunTimeSettings
             $UpdatedSettings = New-Object -TypeName "System.Collections.Arraylist"
             foreach ($Property in $RunTimeSettings) {
                 [Void]$UpdatedSettings.Add($Property.Replace($WorkingPath.InnerText, $Properties.InstallationPath))
             }
-            # Overwrite original configuration
+            # Overwrite source configuration
             Set-Content -Path $ConfigurationFiles.RunTimeSettings -Value $UpdatedSettings
             # Reload XML settings
             $RunTimeSettingsXML.Load($ConfigurationFiles.RunTimeSettings)
