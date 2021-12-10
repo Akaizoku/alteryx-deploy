@@ -10,7 +10,7 @@ function Invoke-RestoreAlteryx {
         File name:      Invoke-RestoreAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-26
-        Last modified:  2021-12-09
+        Last modified:  2021-12-10
         Comment:        User configuration files are out of scope of this procedure:
                         - %APPDATA%\Alteryx\Engine\UserConnections.xml
                         - %APPDATA%\Alteryx\Engine\UserAlias.xml
@@ -120,21 +120,6 @@ function Invoke-RestoreAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
-        # Restore database
-        if ($Restore.Database -eq $true) {
-            Write-Log -Type "INFO" -Message "Restore MongoDB database from backup"
-            if ($PSCmdlet.ShouldProcess("MongoDB", "Restore")) {
-                $MongoDBPath = Join-Path -Path $BackupPath -ChildPath "MongoDB"
-                $DatabaseRestore = Restore-AlteryxDatabase -SourcePath $MongoDBPath -TargetPath $TargetPath -ServicePath $ServicePath
-                if ($DatabaseRestore -match "failed") {
-                    Write-Log -Type "ERROR" -Message $DatabaseRestore
-                    Write-Log -Type "ERROR" -Message "Database restore failed" -ExitCode 1
-                } else {
-                    Write-Log -Type "DEBUG" -Message $DatabaseRestore
-                }
-            }
-        }
-        # ----------------------------------------------------------------------------
         # Restore configuration files
         if ($Restore.Configuration -eq $true) {
             Write-Log -Type "INFO" -Message "Restore configuration files"
@@ -215,6 +200,21 @@ function Invoke-RestoreAlteryx {
                     $RunTimeSettingsXML.Save($ConfigurationFiles.RunTimeSettings)
                 } else {
                     Write-Log -Type "WARN" -Message "RunTimeSettings.xml backup configuration file could not be located"
+                }
+            }
+        }
+        # ----------------------------------------------------------------------------
+        # Restore database
+        if ($Restore.Database -eq $true) {
+            Write-Log -Type "INFO" -Message "Restore MongoDB database from backup"
+            if ($PSCmdlet.ShouldProcess("MongoDB", "Restore")) {
+                $MongoDBPath = Join-Path -Path $BackupPath -ChildPath "MongoDB"
+                $DatabaseRestore = Restore-AlteryxDatabase -SourcePath $MongoDBPath -TargetPath $TargetPath -ServicePath $ServicePath
+                if ($DatabaseRestore -match "failed") {
+                    Write-Log -Type "ERROR" -Message $DatabaseRestore
+                    Write-Log -Type "ERROR" -Message "Database restore failed" -ExitCode 1
+                } else {
+                    Write-Log -Type "DEBUG" -Message $DatabaseRestore
                 }
             }
         }
