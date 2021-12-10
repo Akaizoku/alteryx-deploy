@@ -10,7 +10,7 @@ function Invoke-RestoreAlteryx {
         File name:      Invoke-RestoreAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-26
-        Last modified:  2021-11-21
+        Last modified:  2021-12-09
         Comment:        User configuration files are out of scope of this procedure:
                         - %APPDATA%\Alteryx\Engine\UserConnections.xml
                         - %APPDATA%\Alteryx\Engine\UserAlias.xml
@@ -152,8 +152,20 @@ function Invoke-RestoreAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
-        # Set controller token
+        # (Re)Set controller token
         if ($Restore.Token -eq $true) {
+            Write-Log -Type "INFO" -Message "Remove encrypted controller token"
+            $XPath = "SystemSettings/Controller/ServerSecretEncrypted"
+            $RunTimeSettingsXML = New-Object -TypeName "System.XML.XMLDocument"
+            $RunTimeSettingsXML.Load($ConfigurationFiles.RunTimeSettings)
+            $ServerSecretEncrypted = Select-XMLNode -XML $RunTimeSettingsXML -XPath $XPath
+            if ($null -ne $ServerSecretEncrypted) {
+                Write-Log -Type "DEBUG" -Message $ServerSecretEncrypted.InnerText
+                [Void]$ServerSecretEncrypted.ParentNode.RemoveChild($ServerSecretEncrypted)
+                $RunTimeSettingsXML.Save($ConfigurationFiles.RunTimeSettings)
+            } else {
+                Write-Log -Type "WARN" -Message "Encrypted controller token could not be found"
+            }
             Write-Log -Type "INFO" -Message "Restore controller token"
             if ($PSCmdlet.ShouldProcess("Controller token", "Restore")) {
                 $TokenFile = Join-Path -Path $BackupPath -ChildPath "ControllerToken.txt"
@@ -164,7 +176,10 @@ function Invoke-RestoreAlteryx {
                         Write-Log -Type "ERROR" -Message $SetToken
                         Write-Log -Type "ERROR" -Message "Controller token update failed"
                     } else {
-                        Write-Log -Type "DEBUG" -Message $SetToken
+                        # Ignore successfull empty output
+                        if ($SetToken -ne "") {
+                            Write-Log -Type "DEBUG" -Message $SetToken
+                        }
                     }
                 }
             }
