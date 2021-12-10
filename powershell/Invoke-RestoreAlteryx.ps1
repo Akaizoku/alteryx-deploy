@@ -41,7 +41,6 @@ function Invoke-RestoreAlteryx {
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # Variables
         $ServicePath    = Join-Path -Path $Properties.InstallationPath -ChildPath "bin\AlteryxService.exe"
-        $TargetPath     = Join-Path -Path $Properties.InstallationPath -ChildPath "Service\Persistence\MongoDB"
         $Staging        = $false
         # Restore options
         $Restore = [Ordered]@{
@@ -137,17 +136,78 @@ function Invoke-RestoreAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
+        # Update configuration
+        Write-Log -Type "INFO" -Message "Updating configuration"
+        $RunTimeSettingsXML = New-Object -TypeName "System.XML.XMLDocument"
+        $RunTimeSettingsXML.Load($ConfigurationFiles.RunTimeSettings)
+        # Gallery URL
+        $BaseAddress = Select-XMLNode -XML $RunTimeSettingsXML -XPath "SystemSettings/Gallery/BaseAddress"
+        if ($BaseAddress.InnerText -match "https?://localhost/?.*") {
+            Write-Log -Type "INFO" -Message "Configuring base Gallery URL"
+            $NewBaseAddress = $BaseAddress.InnerText -replace "localhost", $env:ComputerName
+            Write-Log -Type "DEBUG" -Message $NewBaseAddress
+            $BaseAddress.InnerText = $NewBaseAddress
+        }
+        # SSL
+        if ($Properties.EnableSSL -eq $true) {
+            $Protocol = "https"
+            $Action   = "Enabling"
+        } else {
+            $Protocol = "http"
+            $Action   = "Disabling"
+        }
+        # ! Node name is case-sensitive: SslEnabled
+        $SSLEnabled = Select-XMLNode -XML $RunTimeSettingsXML -XPath "SystemSettings/Gallery/SslEnabled"
+        if ($null -ne $SSLEnabled) {
+            if ($SSLEnabled.InnerText -ne $Properties.EnableSSL.ToString()) {
+                Write-Log -Type "INFO" -Message ($Action + " SSL")
+                $SSLEnabled.InnerText = $Properties.EnableSSL.ToString()
+            }
+        } else {
+            # If SSL configuration is not explicitly defined
+            if ($Properties.EnableSSL -eq $true) {
+                # Create SSL node
+                $Gallery = Select-XMLNode -XML $RunTimeSettingsXML -XPath "SystemSettings/Gallery"
+                $SSLEnabled = $RunTimeSettingsXML.CreateElement("SslEnabled")
+                $SSLEnabled.InnerText = $Properties.EnableSSL.ToString()
+                [Void]$Gallery.AppendChild($SSLEnabled)
+            }
+        }
+        if ($BaseAddress.InnerText -notmatch "^${Protocol}://") {
+            Write-Log -Type "INFO" -Message ($Action + " HTTPS")
+            $SSLAddress = $BaseAddress.InnerText -replace "^https?", "$Protocol"
+            Write-Log -Type "DEBUG" -Message $SSLAddress
+            $BaseAddress.InnerText = $SSLAddress
+        }
+        # Update configuration file
+        $RunTimeSettingsXML.Save($ConfigurationFiles.RunTimeSettings)
+        # Installation path
+        $WorkingPath = Select-XMLNode -XML $RunTimeSettingsXML -XPath "SystemSettings/Environment/WorkingPath"
+        if ($WorkingPath.InnerText -ne $Properties.InstallationPath) {
+            Write-Log -Type "INFO"  -Message "Updating installation paths"
+            Write-Log -Type "DEBUG" -Message "Original=$($WorkingPath.InnerText)"
+            Write-Log -Type "DEBUG" -Message "New=$($Properties.InstallationPath)"
+            $RunTimeSettings = Get-Content -Path $ConfigurationFiles.RunTimeSettings
+            $UpdatedSettings = New-Object -TypeName "System.Collections.Arraylist"
+            foreach ($Property in $RunTimeSettings) {
+                [Void]$UpdatedSettings.Add($Property.Replace($WorkingPath.InnerText, $Properties.InstallationPath))
+            }
+            # Overwrite original configuration
+            Set-Content -Path $ConfigurationFiles.RunTimeSettings -Value $UpdatedSettings
+            # Reload XML settings
+            $RunTimeSettingsXML.Load($ConfigurationFiles.RunTimeSettings)
+        }
+        # ----------------------------------------------------------------------------
         # (Re)Set controller token
         if ($Restore.Token -eq $true) {
             Write-Log -Type "INFO" -Message "Remove encrypted controller token"
-            $XPath = "SystemSettings/Controller/ServerSecretEncrypted"
-            $RunTimeSettingsXML = New-Object -TypeName "System.XML.XMLDocument"
-            $RunTimeSettingsXML.Load($ConfigurationFiles.RunTimeSettings)
-            $ServerSecretEncrypted = Select-XMLNode -XML $RunTimeSettingsXML -XPath $XPath
+            $ControllerSettingsXML = New-Object -TypeName "System.XML.XMLDocument"
+            $ControllerSettingsXML.Load($ConfigurationFiles.RunTimeSettings)
+            $ServerSecretEncrypted = Select-XMLNode -XML $ControllerSettingsXML -XPath "SystemSettings/Controller/ServerSecretEncrypted"
             if ($null -ne $ServerSecretEncrypted) {
                 Write-Log -Type "DEBUG" -Message $ServerSecretEncrypted.InnerText
                 [Void]$ServerSecretEncrypted.ParentNode.RemoveChild($ServerSecretEncrypted)
-                $RunTimeSettingsXML.Save($ConfigurationFiles.RunTimeSettings)
+                $ControllerSettingsXML.Save($ConfigurationFiles.RunTimeSettings)
             } else {
                 Write-Log -Type "WARN" -Message "Encrypted controller token could not be found"
             }
@@ -173,11 +233,13 @@ function Invoke-RestoreAlteryx {
         # Set Run-As user
         if ($Restore.RunAsUser -eq $true) {
             # TODO
+            Write-Log -Type "WARN" -Message "Run As User restore is not currently supported"
         }
         # ----------------------------------------------------------------------------
         # Set SMTP password
         if ($Restore.SMTPPassword -eq $true) {
             # TODO
+            Write-Log -Type "WARN" -Message "SMTP password restore is not currently supported"
         }
         # ----------------------------------------------------------------------------
         # Reset storage key
@@ -190,14 +252,14 @@ function Invoke-RestoreAlteryx {
                 if ($null -ne $BackUpRunTimeSettings) {
                     $BackupXML = New-Object -TypeName "System.XML.XMLDocument"
                     $BackupXML.Load($BackUpRunTimeSettings.FullName)
-                    $BackupXMLNode  = Select-XMLNode -XML $BackupXML -XPath $XPath
+                    $BackupXMLNode = Select-XMLNode -XML $BackupXML -XPath $XPath
                     Write-Log -Type "DEBUG" -Message $BackupXMLNode.InnerText
                     # Update configuration file
-                    $RunTimeSettingsXML = New-Object -TypeName "System.XML.XMLDocument"
-                    $RunTimeSettingsXML.Load($ConfigurationFiles.RunTimeSettings)
-                    $NewXMLNode  = Select-XMLNode -XML $RunTimeSettingsXML -XPath $XPath
+                    $StorageSettingsXML = New-Object -TypeName "System.XML.XMLDocument"
+                    $StorageSettingsXML.Load($ConfigurationFiles.RunTimeSettings)
+                    $NewXMLNode = Select-XMLNode -XML $StorageSettingsXML -XPath $XPath
                     $NewXMLNode.InnerText = $BackupXMLNode.InnerText
-                    $RunTimeSettingsXML.Save($ConfigurationFiles.RunTimeSettings)
+                    $StorageSettingsXML.Save($ConfigurationFiles.RunTimeSettings)
                 } else {
                     Write-Log -Type "WARN" -Message "RunTimeSettings.xml backup configuration file could not be located"
                 }
@@ -207,15 +269,28 @@ function Invoke-RestoreAlteryx {
         # Restore database
         if ($Restore.Database -eq $true) {
             Write-Log -Type "INFO" -Message "Restore MongoDB database from backup"
-            if ($PSCmdlet.ShouldProcess("MongoDB", "Restore")) {
-                $MongoDBPath = Join-Path -Path $BackupPath -ChildPath "MongoDB"
-                $DatabaseRestore = Restore-AlteryxDatabase -SourcePath $MongoDBPath -TargetPath $TargetPath -ServicePath $ServicePath
-                if ($DatabaseRestore -match "failed") {
-                    Write-Log -Type "ERROR" -Message $DatabaseRestore
-                    Write-Log -Type "ERROR" -Message "Database restore failed" -ExitCode 1
-                } else {
-                    Write-Log -Type "DEBUG" -Message $DatabaseRestore
+            $EmbeddedMongoDBEnabled = Select-XMLNode -XML $RunTimeSettingsXML -XPath "SystemSettings/Controller/EmbeddedMongoDBEnabled"
+            if ($EmbeddedMongoDBEnabled.InnerText -eq $true) {
+                if ($PSCmdlet.ShouldProcess("MongoDB", "Restore")) {
+                    $EmbeddedMongoDBRootPath = Select-XMLNode -XML $RunTimeSettingsXML -XPath "SystemSettings/Controller/EmbeddedMongoDBRootPath"
+                    if ($null -ne $EmbeddedMongoDBRootPath) {
+                        $TargetPath = $EmbeddedMongoDBRootPath.InnerText
+                    } else {
+                        # Use system default
+                        $TargetPath = Join-Path -Path $Properties.InstallationPath -ChildPath "Service\Persistence\MongoDB"
+                    }
+                    $MongoDBPath = Join-Path -Path $BackupPath -ChildPath "MongoDB"
+                    $DatabaseRestore = Restore-AlteryxDatabase -SourcePath $MongoDBPath -TargetPath $TargetPath -ServicePath $ServicePath
+                    if ($DatabaseRestore -match "failed") {
+                        Write-Log -Type "ERROR" -Message $DatabaseRestore
+                        Write-Log -Type "ERROR" -Message "Database restore failed" -ExitCode 1
+                    } else {
+                        Write-Log -Type "DEBUG" -Message $DatabaseRestore
+                    }
                 }
+            } else {
+                Write-Log -Type "ERROR" -Message "User-managed MongoDB is not supported"
+                Write-Log -Type "WARN"  -Message "Skipping database restore"
             }
         }
         # ----------------------------------------------------------------------------
