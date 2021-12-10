@@ -388,6 +388,7 @@ Only the first version supported is listed. Later releases should also be compat
 | [1.0.0]          | [2021.3] | 5.0        | 1.2.4  | 1.0.0   |
 | [1.1.0]          | [2021.3] | 5.0        | 1.2.5  | 1.0.1   |
 | [1.1.1]          | [2021.3] | 5.0        | 1.2.5  | 1.0.1   |
+| [1.1.2]          | [2021.3] | 5.0        | 1.2.5  | 1.0.1   |
 
 ## Known issues
 
@@ -409,4 +410,5 @@ It can be prevented by configuring a temporary directory (`TempDirectory`) that 
 [1.0.0]:https://github.com/Akaizoku/alteryx-deploy/releases/1.0.0
 [1.1.0]:https://github.com/Akaizoku/alteryx-deploy/releases/1.1.0
 [1.1.1]:https://github.com/Akaizoku/alteryx-deploy/releases/1.1.1
+[1.1.2]:https://github.com/Akaizoku/alteryx-deploy/releases/1.1.2
 [2021.3]:https://help.alteryx.com/release-notes/server/server-20213-release-notes
