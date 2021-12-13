@@ -301,11 +301,12 @@ Below are the steps to restore the Alteryx application database.
 2. Check backup path;
    - If backup file is an archive (.ZIP), extract files from archive.
    - If backup path is a directory, select most recent backup file (using [last write time](https://docs.microsoft.com/en-us/dotnet/api/system.io.filesysteminfo.lastwritetime)).
-3. Restore MongoDB database;
-4. Restore application configuration files;
+3. Restore application configuration files;
+4. Update configuration to match new environment;
 5. Restore controller token;
 6. Reset storage keys;
-7. Restart Alteryx Service (if it was running previously).
+7. Restore MongoDB database;
+8. Restart Alteryx Service (if it was running previously).
 
 ### Start
 

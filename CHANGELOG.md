@@ -5,7 +5,13 @@ All notable changes to the [Alteryx deploy](https://github.com/Akaizoku/alteryx-
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [1.1.2](https://github.com/Akaizoku/alteryx-deploy/releases/1.1.2) - Unreleased
+## [1.1.2](https://github.com/Akaizoku/alteryx-deploy/releases/1.1.2) - 2021-12-13
+
+UX improvements
+
+### Changed
+
+- Automatically update environment variables during restore (installation path, Gallery URL, etc.)
 
 ### Fixed
 
@@ -24,6 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fixed an issue with upgrade from 2021.3 (or lower) to 2021.4 ([#2](https://github.com/Akaizoku/alteryx-deploy/issues/2))
 
 ## [1.1.0](https://github.com/Akaizoku/alteryx-deploy/releases/1.1.0) - 2021-11-21
+
+2021.4 hotfix
 
 ### Added
 
