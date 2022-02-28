@@ -16,13 +16,16 @@ function Uninstall-Alteryx {
         File name:      Uninstall-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2021-11-21
+        Last modified:  2022-01-27
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
 
         .LINK
         https://help.alteryx.com/current/product-activation-and-licensing/use-command-line-options
+
+        .LINK
+        https://community.alteryx.com/t5/Alteryx-Designer-Knowledge-Base/Complete-Uninstall-of-Alteryx-Designer/ta-p/402897
 
     #>
     [CmdletBinding (
@@ -95,6 +98,8 @@ function Uninstall-Alteryx {
                 Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) executable file could not be located" -ExitCode 1
             }
         }
+        # TODO remove leftover files
+        # TODO remove registry keys
         # TODO enable uninstall of standalone components
         Write-Log -Type "CHECK" -Message "Uninstallation of Alteryx $($InstallationProperties.Product) $Version successfull"
     }
