@@ -96,7 +96,7 @@ Alteryx installation files must be made available in the source directory (defau
 
 You can download them from <https://downloads.alteryx.com>.
 
-Please refer to [Alteryx system requirements](https://help.alteryx.com/20213/server/system-requirements) for minimum machine requirements.
+Please refer to [Alteryx system requirements](https://help.alteryx.com/current/server/system-requirements) for minimum machine requirements.
 
 ## Configuration
 
@@ -215,7 +215,7 @@ Below are the steps to install the Alteryx application.
 .\Deploy-Alteryx.ps1 -Action "install"
 ```
 
-1. Install Alteryx Server (or Designer if specified with the `-Product` parameter;
+1. Install Alteryx Server (or Designer if specified with the `-Product` parameter);
 2. Install Predictive Tools (if enabled);
 3. Install Intelligence Suite (if enabled);
 4. Install Data packages (if enabled).
@@ -229,7 +229,7 @@ Below are the steps to upgrade the Alteryx application.
 ```
 
 1. Backup Alteryx database and configuration files;
-2. Upgrade Alteryx Server (or Designer if specified with the `-Product` parameter;
+2. Upgrade Alteryx Server (or Designer if specified with the `-Product` parameter);
 3. Install Predictive Tools (if enabled);
 4. Install Intelligence Suite (if enabled);
 5. Install Data packages (if enabled);
@@ -243,7 +243,7 @@ Below are the steps to uninstall the Alteryx application.
 .\Deploy-Alteryx.ps1 -Action "uninstall"
 ```
 
-1. Uninstall Alteryx Server (or Designer if specified with the `-Product` parameter.
+1. Uninstall Alteryx Server (or Designer if specified with the `-Product` parameter).
 
 **Warnings:**
 
@@ -258,7 +258,7 @@ Below are the steps to activate (license) the Alteryx application.
 .\Deploy-Alteryx.ps1 -Action "activate"
 ```
 
-1. Check licensing system connectivity (<whitelist.alteryx.com>);
+1. Check licensing system connectivity ([whitelist.alteryx.com]);
 2. Check license file path;
 3. Activate Alteryx licenses.
 
@@ -270,7 +270,7 @@ Below are the steps to deactivate (license) the Alteryx application.
 .\Deploy-Alteryx.ps1 -Action "deactivate"
 ```
 
-1. Check licensing system connectivity (<whitelist.alteryx.com>);
+1. Check licensing system connectivity ([whitelist.alteryx.com]);
 2. Check license file path;
 3. Deactivate Alteryx licenses.
 
@@ -393,6 +393,10 @@ Only the first version supported is listed. Later releases should also be compat
 
 ## Known issues
 
+Below are listed known issues that might occur depending on your environment.
+
+Please report any new problem using the [GitHub repository issue page](https://github.com/Akaizoku/alteryx-deploy/issues).
+
 ### Access to the cloud file is denied
 
 This error can occur during the backup of the application when [OneDrive](https://docs.microsoft.com/en-us/onedrive/one-drive-sync) is installed and is synchronising the temporary backup files while the script attempts to remove them (see [PowerShell issue #9246](https://github.com/PowerShell/PowerShell/issues/9246) for more information).
@@ -413,3 +417,4 @@ It can be prevented by configuring a temporary directory (`TempDirectory`) that 
 [1.1.1]:https://github.com/Akaizoku/alteryx-deploy/releases/1.1.1
 [1.1.2]:https://github.com/Akaizoku/alteryx-deploy/releases/1.1.2
 [2021.3]:https://help.alteryx.com/release-notes/server/server-20213-release-notes
+[whitelist.alteryx.com]:(whitelist.alteryx.com)
