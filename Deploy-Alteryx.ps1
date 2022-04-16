@@ -205,11 +205,24 @@ Begin {
     # * Variables
     # ----------------------------------------------------------------------------
     # (Re)load environment variables
-    # Write-Log -Type "DEBUG" -Message "Load environment variables"
-    # $EnvironmentVariables = @()
-    # foreach ($EnvironmentVariable in $EnvironmentVariables) {
-    #     Sync-EnvironmentVariable -Name $EnvironmentVariable -Scope $Properties.EnvironmentVariableScope | Out-Null
-    # }
+    Write-Log -Type "DEBUG" -Message "Load environment variables"
+    $EnvironmentVariables = @()
+    foreach ($EnvironmentVariable in $EnvironmentVariables) {
+        Sync-EnvironmentVariable -Name $EnvironmentVariable -Scope $Properties.EnvironmentVariableScope | Out-Null
+    }
+
+    # Check installation path
+    if (Test-Object -Path $Properties.InstallationPath -NotFound) {
+        if ($Unattended -eq $false) {
+            do {
+                Write-Log -Type "WARN" -Message "Path not found $($Properties.InstallationPath)"
+                $Properties.InstallationPath = Read-Host -Prompt "Please enter the Alteryx installation path"
+            } until (Test-Object -Path $Properties.InstallationPath)
+        } else {
+            # Retrieve path from registry
+            $Properties.InstallationPath = Get-AlteryxInstallDirectory
+        }
+    }
 
     # ----------------------------------------------------------------------------
     # * Options
