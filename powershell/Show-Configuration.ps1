@@ -16,7 +16,7 @@ function Show-Configuration {
         File name:      Show-Configuration.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2021-09-06
+        Last modified:  2022-04-19
     #>
     [CmdletBinding ()]
     Param (
@@ -40,6 +40,8 @@ function Show-Configuration {
     Begin {
         # Get global preference variables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+        # Log function call
+        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
         # Display colour
         $Colour = "Cyan"
     }

@@ -16,7 +16,7 @@ function Uninstall-Alteryx {
         File name:      Uninstall-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2022-01-27
+        Last modified:  2022-04-19
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -57,6 +57,8 @@ function Uninstall-Alteryx {
     Begin {
         # Get global preference variables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+        # Log function call
+        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
         # Variables
         $ISOTimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
         $Tags = [Ordered]@{"Version" = $Properties.Version}
