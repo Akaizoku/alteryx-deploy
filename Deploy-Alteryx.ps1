@@ -212,15 +212,19 @@ Begin {
     }
 
     # Check installation path
-    if (Test-Object -Path $Properties.InstallationPath -NotFound) {
+    if (($Properties.InstallationPath -eq "") -Or (Test-Object -Path $Properties.InstallationPath -NotFound)) {
         if ($Unattended -eq $false) {
             do {
                 Write-Log -Type "WARN" -Message "Path not found $($Properties.InstallationPath)"
                 $Properties.InstallationPath = Read-Host -Prompt "Please enter the Alteryx installation path"
             } until (Test-Object -Path $Properties.InstallationPath)
         } else {
-            # Retrieve path from registry
-            $Properties.InstallationPath = Get-AlteryxInstallDirectory
+            if ($Action -ne "install") {
+                # Retrieve path from registry
+                $Properties.InstallationPath = Get-AlteryxInstallDirectory
+            } else {
+                Write-Log -Type "ERROR" -Message "No Alteryx installation path has been provided" -ExitCode 1
+            }
         }
     }
 

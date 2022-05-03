@@ -16,7 +16,7 @@ function Invoke-DeactivateAlteryx {
         File name:      Invoke-DeactivateAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-11-20
-        Last modified:  2021-12-08
+        Last modified:  2022-04-19
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -50,6 +50,8 @@ function Invoke-DeactivateAlteryx {
     Begin {
         # Get global preference variables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+        # Log function call
+        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
         # License utility
         $LicenseUtility = Get-AlteryxUtility -Utility "License" -Path $Properties.InstallationPath
     }

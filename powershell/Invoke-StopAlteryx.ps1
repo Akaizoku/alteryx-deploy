@@ -10,7 +10,7 @@ function Invoke-StopAlteryx {
         File name:      Invoke-StopAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2021-11-20
+        Last modified:  2022-04-19
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -33,6 +33,8 @@ function Invoke-StopAlteryx {
     Begin {
         # Get global preference vrariables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+        # Log function call
+        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
         # Variables
         $ServiceName = "AlteryxService"
         # Retrieve Alteryx Service utility path
