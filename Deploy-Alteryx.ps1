@@ -17,6 +17,7 @@
     - backup:       backup the Alteryx application database
     - deactivate:   deactivate the Alteryx application license
     - install:      install the Alteryx application
+    - repair:       repair the Alteryx application database
     - restart:      restart the Alteryx application
     - restore:      restore a backup of the Alteryx application database
     - show:         display the script configuration
@@ -32,7 +33,7 @@
     File name:      Deploy-Alteryx.ps1
     Author:         Florian Carrier
     Creation date:  2021-06-13
-    Last modified:  2021-11-15
+    Last modified:  2022-04-27
     Dependencies:   - PowerShell Tool Kit (PSTK)
                     - Alteryx PowerShell Module (PSAYX)
 
@@ -62,6 +63,7 @@ Param (
         "backup",
         "deactivate",
         "install",
+        "repair",
         "restart",
         "restore",
         "show",
@@ -211,23 +213,6 @@ Begin {
         Sync-EnvironmentVariable -Name $EnvironmentVariable -Scope $Properties.EnvironmentVariableScope | Out-Null
     }
 
-    # Check installation path
-    if (($Properties.InstallationPath -eq "") -Or (Test-Object -Path $Properties.InstallationPath -NotFound)) {
-        if ($Unattended -eq $false) {
-            do {
-                Write-Log -Type "WARN" -Message "Path not found $($Properties.InstallationPath)"
-                $Properties.InstallationPath = Read-Host -Prompt "Please enter the Alteryx installation path"
-            } until (Test-Object -Path $Properties.InstallationPath)
-        } else {
-            if ($Action -ne "install") {
-                # Retrieve path from registry
-                $Properties.InstallationPath = Get-AlteryxInstallDirectory
-            } else {
-                Write-Log -Type "ERROR" -Message "No Alteryx installation path has been provided" -ExitCode 1
-            }
-        }
-    }
-
     # ----------------------------------------------------------------------------
     # * Options
     # ----------------------------------------------------------------------------
@@ -262,6 +247,7 @@ Process {
         "backup"        { Invoke-BackupAlteryx      -Properties $Properties -Unattended:$Unattended                                                 }
         "deactivate"    { Invoke-DeactivateAlteryx  -Properties $Properties -Unattended:$Unattended                                                 }
         "install"       { Install-Alteryx           -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
+        "repair"        { Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                 }
         "restart"       { Invoke-RestartAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
         "restore"       { Invoke-RestoreAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
         "show"          { Show-Configuration        -Properties $Properties -InstallationProperties $InstallationProperties                         }
