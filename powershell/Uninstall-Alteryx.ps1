@@ -16,7 +16,7 @@ function Uninstall-Alteryx {
         File name:      Uninstall-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2022-04-19
+        Last modified:  2023-01-17
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -85,9 +85,9 @@ function Uninstall-Alteryx {
             if (Test-Path -Path $ServerPath) {
                 if ($Properties.InstallAwareLog -eq $true) {
                     $InstallAwareLog = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${ServerFileName}.log"
-                    $ServerUninstall = Uninstall-AlteryxServer -Path $ServerPath -Log $InstallAwareLog -Unattended:$Unattended
+                    $ServerUninstall = Uninstall-AlteryxServer -Path $ServerPath -Version $Properties.Version -Log $InstallAwareLog -Unattended:$Unattended
                 } else {
-                    $ServerUninstall = Uninstall-AlteryxServer -Path $ServerPath -Unattended:$Unattended
+                    $ServerUninstall = Uninstall-AlteryxServer -Path $ServerPath -Version $Properties.Version -Unattended:$Unattended
                 }
                 Write-Log -Type "DEBUG" -Message $ServerUninstall
                 if ($ServerUninstall.ExitCode -eq 0) {

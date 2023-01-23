@@ -16,7 +16,7 @@ function Install-Alteryx {
         File name:      Install-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2022-04-19
+        Last modified:  2023-01-17
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -96,15 +96,15 @@ function Install-Alteryx {
                     if ($Properties.InstallAwareLog -eq $true) {
                         $InstallAwareLog = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${ServerFileName}.log"
                         if ($null -eq $Properties.LicenseEmail -Or $Properties.LicenseEmail -eq "") {
-                            $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Log $InstallAwareLog -Language $Properties.Language -AllUsers -Unattended:$Unattended
+                            $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Log $InstallAwareLog -Language $Properties.Language -Version $Properties.Version -AllUsers -Unattended:$Unattended
                         } else {
-                            $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Log $InstallAwareLog -Serial $Properties.LicenseEmail -Language $Properties.Language -AllUsers -Unattended:$Unattended
+                            $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Log $InstallAwareLog -Serial $Properties.LicenseEmail -Language $Properties.Language -Version $Properties.Version -AllUsers -Unattended:$Unattended
                         }
                     } else {
                         if ($null -eq $Properties.LicenseEmail -Or $Properties.LicenseEmail -eq "") {
-                            $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Language $Properties.Language -AllUsers -Unattended:$Unattended
+                            $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Language $Properties.Language -Version $Properties.Version -AllUsers -Unattended:$Unattended
                         } else {
-                            $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Serial $Properties.LicenseEmail -Language $Properties.Language -AllUsers -Unattended:$Unattended
+                            $ServerInstall = Install-AlteryxServer -Path $ServerPath -InstallDirectory $Properties.InstallationPath -Serial $Properties.LicenseEmail -Language $Properties.Language -Version $Properties.Version -AllUsers -Unattended:$Unattended
                         }
                     }
                     Write-Log -Type "DEBUG" -Message $ServerInstall
