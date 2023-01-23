@@ -18,7 +18,7 @@
     - configure:    configure the Alteryx application
     - deactivate:   deactivate the Alteryx application license
     - install:      install the Alteryx application
-    - path:         patch upgrade the Alteryx application
+    - patch:        patch upgrade the Alteryx application
     - restart:      restart the Alteryx application
     - restore:      restore a backup of the Alteryx application database
     - show:         display the script configuration
@@ -34,7 +34,7 @@
     File name:      Deploy-Alteryx.ps1
     Author:         Florian Carrier
     Creation date:  2021-06-13
-    Last modified:  2022-06-29
+    Last modified:  2022-11-25
     Dependencies:   - PowerShell Tool Kit (PSTK)
                     - Alteryx PowerShell Module (PSAYX)
 
