@@ -16,7 +16,7 @@ function Invoke-DeactivateAlteryx {
         File name:      Invoke-DeactivateAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-11-20
-        Last modified:  2022-04-19
+        Last modified:  2023-01-17
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -66,7 +66,7 @@ function Invoke-DeactivateAlteryx {
                     # Remove all license keys
                     $Deactivation = Remove-AlteryxLicense -Path $LicenseUtility
                     # Check deactivation status
-                    if (Select-String -InputObject $Dectivation -Pattern "License(s) successfully removed." -SimpleMatch -Quiet) {
+                    if (Select-String -InputObject $Deactivation -Pattern "License(s) successfully removed." -SimpleMatch -Quiet) {
                         Write-Log -Type "CHECK" -Message "All licenses were successfully deactivated"
                     } else {
                         # Output error

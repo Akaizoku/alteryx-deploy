@@ -15,9 +15,11 @@
 
     - activate:     activate the Alteryx application license
     - backup:       backup the Alteryx application database
+    - configure:    configure the Alteryx application
     - deactivate:   deactivate the Alteryx application license
     - install:      install the Alteryx application
     - repair:       repair the Alteryx application database
+    - patch:        patch upgrade the Alteryx application
     - restart:      restart the Alteryx application
     - restore:      restore a backup of the Alteryx application database
     - show:         display the script configuration
@@ -55,7 +57,7 @@
 Param (
     [Parameter (
         Position    = 1,
-        Mandatory   = $false,
+        Mandatory   = $true,
         HelpMessage = "Action to perform"
     )]
     [ValidateSet (
@@ -64,6 +66,10 @@ Param (
         "deactivate",
         "install",
         "repair",
+        "configure",
+        "deactivate",
+        "install",
+        "patch",
         "restart",
         "restore",
         "show",
@@ -75,33 +81,33 @@ Param (
     [System.String]
     $Action,
     [Parameter (
-        Position    = 2,
-        Mandatory    = $false,
-        HelpMessage    = "Version parameter overwrite"
-    )]
-    [ValidateNotNullOrEmpty ()]
-    [System.String]
-    $Version,
-    [Parameter (
-        Position    = 3,
-        Mandatory   = $false,
-        HelpMessage = "Database backup path"
-    )]
-    [ValidateNotNullOrEmpty ()]
-    [System.String]
-    $BackupPath,
-    [Parameter (
-        Position    = 4,
-        Mandatory   = $false,
-        HelpMessage = "Product to install"
-    )]
-    [ValidateSet (
-        "Designer",
-        "Server"
-    )]
-    [ValidateNotNullOrEmpty ()]
-    [System.String]
-    $Product = "Server",
+		Position	= 2,
+		Mandatory	= $false,
+		HelpMessage	= "Version parameter overwrite"
+	)]
+	[ValidateNotNullOrEmpty ()]
+	[System.String]
+	$Version,
+	[Parameter (
+		Position	= 3,
+		Mandatory	= $false,
+		HelpMessage = "Database backup path"
+	)]
+	[ValidateNotNullOrEmpty ()]
+	[System.String]
+	$BackupPath,
+	[Parameter (
+		Position	= 4,
+		Mandatory	= $false,
+		HelpMessage	= "Product to install"
+	)]
+	[ValidateSet (
+		"Designer",
+		"Server"
+	)]
+	[ValidateNotNullOrEmpty ()]
+	[System.String]
+	$Product = "Server",
     [Parameter (
         Position    = 5,
         Mandatory   = $false,
@@ -245,9 +251,11 @@ Process {
     switch ($Action) {
         "activate"      { Invoke-ActivateAlteryx    -Properties $Properties -Unattended:$Unattended                                                 }
         "backup"        { Invoke-BackupAlteryx      -Properties $Properties -Unattended:$Unattended                                                 }
+        "configure"     { Set-Configuration         -Properties $Properties -Unattended:$Unattended                                                 }
         "deactivate"    { Invoke-DeactivateAlteryx  -Properties $Properties -Unattended:$Unattended                                                 }
         "install"       { Install-Alteryx           -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
         "repair"        { Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                 }
+        "patch"         { Invoke-PatchAlteryx       -Properties $Properties -Unattended:$Unattended                                                 }
         "restart"       { Invoke-RestartAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
         "restore"       { Invoke-RestoreAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
         "show"          { Show-Configuration        -Properties $Properties -InstallationProperties $InstallationProperties                         }
