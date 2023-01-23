@@ -10,7 +10,7 @@ function Invoke-BackupAlteryx {
         File name:      Invoke-BackupAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-26
-        Last modified:  2021-11-22
+        Last modified:  2022-04-19
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -33,6 +33,8 @@ function Invoke-BackupAlteryx {
     Begin {
         # Get global preference vrariables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+        # Log function call
+        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
         # Variables
         $ISOTimeStamp   = Get-Date  -Format "yyyyMMdd_HHmmss"
         $BackupPath     = Join-Path -Path $Properties.BackupDirectory   -ChildPath "${ISOTimeStamp}_Alteryx_Server_$($Properties.Version).zip"
@@ -53,7 +55,7 @@ function Invoke-BackupAlteryx {
             }
         }
         # Configuration files
-        $ConfigurationFiles = [Ordered]@{
+        $XMLConfigurationFiles = [Ordered]@{
             "RunTimeSettings"   = "RuntimeSettings.xml"
             "SystemAlias"       = "Engine\SystemAlias.xml"
             "SystemConnections" = "Engine\SystemConnections.xml"
@@ -103,14 +105,25 @@ function Invoke-BackupAlteryx {
         if ($Backup.Configuration -eq $true) {
             Write-Log -Type "INFO" -Message "Backup configuration files"
             if ($PSCmdlet.ShouldProcess("Configuration files", "Back-up")) {
+                # XML configuration files
                 $ProgramData = Join-Path -Path ([Environment]::GetEnvironmentVariable("ProgramData")) -ChildPath "Alteryx"
-                foreach ($ConfigurationFile in $ConfigurationFiles.GetEnumerator()) {
-                    $FilePath = Join-Path -Path $ProgramData -ChildPath $ConfigurationFile.Value
+                foreach ($XMLConfigurationFile in $XMLConfigurationFiles.GetEnumerator()) {
+                    $FilePath = Join-Path -Path $ProgramData -ChildPath $XMLConfigurationFile.Value
                     if (Test-Object -Path $FilePath) {
                         Copy-Object -Path $FilePath -Destination $TempBackupPath -Force
                     } else {
-                        Write-Log -Type "WARN"  -Message "$($ConfigurationFile.Name) configuration file could not be found"
+                        Write-Log -Type "WARN"  -Message "$($XMLConfigurationFile.Name) configuration file could not be found"
                         Write-Log -Type "DEBUG" -Message $FilePath
+                    }
+                }
+                # Extra configuration files
+                $ConfigurationFiles = Get-Object -Path (Join-Path -Path $Properties.InstallationPath -ChildPath "bin\server\config") -ChildItem -Type "File"
+                foreach ($ConfigurationFile in $ConfigurationFiles) {
+                    if (Test-Object -Path $ConfigurationFile.FullName) {
+                        Copy-Object -Path $ConfigurationFile.FullName -Destination "$TempBackupPath\Config" -Force
+                    } else {
+                        Write-Log -Type "WARN"  -Message "$($ConfigurationFile.BaseName) configuration file could not be found"
+                        Write-Log -Type "DEBUG" -Message $ConfigurationFile.FullName
                     }
                 }
             }

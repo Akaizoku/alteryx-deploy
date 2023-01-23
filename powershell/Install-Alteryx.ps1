@@ -16,7 +16,7 @@ function Install-Alteryx {
         File name:      Install-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2021-12-08
+        Last modified:  2022-04-19
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -54,6 +54,8 @@ function Install-Alteryx {
     Begin {
         # Get global preference variables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+        # Log function call
+        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
         # Variables
         $ISOTimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
         $Tags = [Ordered]@{"Version" = $Properties.Version}
@@ -82,6 +84,12 @@ function Install-Alteryx {
             # Update file version number
             $ServerFileName = Set-Tags -String $ServerInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
             $ServerPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $ServerFileName
+            if (Test-Object -Path $ServerPath -NotFound) {
+                # Workaround for files not following naming convention due to duplicate pipeline runs
+                $Workaround     = [Ordered]@{"Version" = [System.String]::Concat($Properties.Version, "_1")}
+                $ServerFileName = Set-Tags -String $ServerInstaller -Tags (Resolve-Tags -Tags $Workaround -Prefix "<" -Suffix ">")
+                $ServerPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $ServerFileName
+            }
             Write-Log -Type "INFO" -Message "Installing Alteryx $($InstallationProperties.Product)"
             if ($PSCmdlet.ShouldProcess($ServerPath, "Install")) {
                 if (Test-Path -Path $ServerPath) {
@@ -160,6 +168,12 @@ function Install-Alteryx {
             # Update file version number
             $AISFileName = Set-Tags -String $AISInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
             $AISPath = Join-Path -Path $Properties.SrcDirectory -ChildPath $AISFileName
+            if (Test-Object -Path $AISPath -NotFound) {
+                # Workaround for files not following naming convention due to duplicate pipeline runs
+                $Workaround  = [Ordered]@{"Version" = [System.String]::Concat($Properties.Version, "_1")}
+                $AISFileName = Set-Tags -String $AISInstaller -Tags (Resolve-Tags -Tags $Workaround -Prefix "<" -Suffix ">")
+                $AISPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $AISFileName 
+            }
             Write-Log -Type "INFO" -Message "Installing Intelligence Suite"
             if ($PSCmdlet.ShouldProcess($AISPath, "Install")) {
                 if (Test-Path -Path $AISPath) {

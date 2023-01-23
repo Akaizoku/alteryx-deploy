@@ -10,7 +10,7 @@ function Invoke-RestartAlteryx {
         File name:      Invoke-RestartAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-27
-        Last modified:  2021-08-30
+        Last modified:  2022-04-19
     #>
     [CmdletBinding ()]
     Param (
@@ -31,6 +31,8 @@ function Invoke-RestartAlteryx {
     Begin {
         # Get global preference vrariables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+        # Log function call
+        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
     }
     Process {
         Write-Log -Type "CHECK" -Message "Restarting Alteryx Service"

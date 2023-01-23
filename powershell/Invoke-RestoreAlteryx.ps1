@@ -10,7 +10,7 @@ function Invoke-RestoreAlteryx {
         File name:      Invoke-RestoreAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-26
-        Last modified:  2021-12-10
+        Last modified:  2022-04-19
         Comment:        User configuration files are out of scope of this procedure:
                         - %APPDATA%\Alteryx\Engine\UserConnections.xml
                         - %APPDATA%\Alteryx\Engine\UserAlias.xml
@@ -39,6 +39,8 @@ function Invoke-RestoreAlteryx {
     Begin {
         # Get global preference vrariables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
+        # Log function call
+        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
         # Variables
         $ServicePath    = Join-Path -Path $Properties.InstallationPath -ChildPath "bin\AlteryxService.exe"
         $Staging        = $false
@@ -122,6 +124,7 @@ function Invoke-RestoreAlteryx {
         # Restore configuration files
         if ($Restore.Configuration -eq $true) {
             Write-Log -Type "INFO" -Message "Restore configuration files"
+            # TODO restore extra configuration files
             if ($PSCmdlet.ShouldProcess("Configuration files", "Restore")) {
                 $BackupConfigurationFiles   = Get-Object -Path $BackupPath -ChildItem -Filter "*.xml"
                 foreach ($ConfigurationFile in $ConfigurationFiles.GetEnumerator()) {

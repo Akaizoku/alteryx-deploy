@@ -10,7 +10,7 @@ function Update-Alteryx {
         File name:      Update-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-09-02
-        Last modified:  2021-12-08
+        Last modified:  2022-04-19
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -41,14 +41,15 @@ function Update-Alteryx {
     Begin {
         # Get global preference vrariables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-        # Retrieve Alteryx Service utility path
-        $AlteryxService = Get-AlteryxUtility -Utility "Service" -Path $Properties.InstallationPath
+        # Log function call
+        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
         # Clear error pipeline
         $Error.Clear()
         # Retrieve current version
         Write-Log -Type "DEBUG" -Object "Retrieving current version"
         if ($PSCmdlet.ShouldProcess("Alteryx version", "Retrieve")) {
-            $AlteryxVersion = Get-AlteryxVersion -Path $AlteryxService
+            # Check registry for installation path to avoid issues if directory has changed
+            $AlteryxVersion = Get-AlteryxVersion
             Write-Log -Type "DEBUG" -Object $AlteryxVersion
             $BackupVersion = Select-String -InputObject $AlteryxVersion -Pattern "\d+\.\d+.\d+(.\d+)?" | ForEach-Object { $PSItem.Matches.Value }
         }
@@ -57,9 +58,29 @@ function Update-Alteryx {
     }
     Process {
         Write-Log -Type "CHECK" -Object "Starting Alteryx Server upgrade from $BackupVersion to $($Properties.Version)"
+        # Check installation path
+        $InstallationPath = Get-AlteryxInstallDirectory
+        if ($Properties.InstallationPath -ne $InstallationPath) {
+            # If new installation directory is specified
+            Write-Log -Type "WARN" -Message "New installation directory specified"
+            Write-Log -Type "INFO" -Message "Old directory: $InstallationPath"
+            Write-Log -Type "INFO" -Message "New directory: $($Properties.InstallationPath)"
+            if ($Unattended -eq $false) {
+                $Confirm = Confirm-Prompt -Prompt "Do you want to change the installation directory?"
+            }
+            if ($Confirm -Or $Unattended) {
+                $AlteryxService = Get-AlteryxUtility -Utility "Service" -Path $InstallationPath
+            } else {
+                Write-Log -Type "WARN" -Message "Upgrade cancelled by user" -ExitCode 0
+            }
+        } else {
+            # Retrieve Alteryx Service utility path
+            $AlteryxService = Get-AlteryxUtility -Utility "Service" -Path $Properties.InstallationPath
+        }
         # Create back-up
         $BackUpProperties = Copy-OrderedHashtable -Hashtable $Properties
-        $BackUpProperties.Version = $BackupVersion
+        $BackUpProperties.Version           = $BackupVersion
+        $BackupProperties.InstallationPath  = $InstallationPath
         Invoke-BackupAlteryx -Properties $BackUpProperties -Unattended:$Unattended
         # Upgrade
         Install-Alteryx -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended
