@@ -16,7 +16,7 @@ function Install-Alteryx {
         File name:      Install-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2023-01-17
+        Last modified:  2023-05-23
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -85,10 +85,18 @@ function Install-Alteryx {
             $ServerFileName = Set-Tags -String $ServerInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
             $ServerPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $ServerFileName
             if (Test-Object -Path $ServerPath -NotFound) {
+                $DefaultServerPath = $ServerPath
                 # Workaround for files not following naming convention due to duplicate pipeline runs
                 $Workaround     = [Ordered]@{"Version" = [System.String]::Concat($Properties.Version, "_1")}
                 $ServerFileName = Set-Tags -String $ServerInstaller -Tags (Resolve-Tags -Tags $Workaround -Prefix "<" -Suffix ">")
                 $ServerPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $ServerFileName
+                if (Test-Object -Path $ServerPath -NotFound) {
+                    Write-Log -Type "ERROR" -Message "Path not found $DefaultServerPath"
+                    Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) installation file could not be located"
+                    Write-Log -Type "WARN" -Message "Alteryx installation failed" -ExitCode 1
+                } else {
+                    Write-Log -Type "DEBUG" -Message "Path not found $DefaultServerPath"
+                }
             }
             Write-Log -Type "INFO" -Message "Installing Alteryx $($InstallationProperties.Product)"
             if ($PSCmdlet.ShouldProcess($ServerPath, "Install")) {
