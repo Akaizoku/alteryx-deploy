@@ -6,12 +6,12 @@
     Deploy Alteryx
 
     .DESCRIPTION
-    Deploy and configure Alteryx
+    Deploy and configure Alteryx on the current machine
 
     .PARAMETER Action
     The action parameter corresponds to the operation to perform.
 
-    Eleven options are available:
+    Fourteen options are available:
 
     - activate:     activate the Alteryx application license
     - backup:       backup the Alteryx application database
@@ -20,6 +20,7 @@
     - install:      install the Alteryx application
     - repair:       repair the Alteryx application database
     - patch:        patch upgrade the Alteryx application
+    - repair:       repair the Alteryx application database
     - restart:      restart the Alteryx application
     - restore:      restore a backup of the Alteryx application database
     - show:         display the script configuration
@@ -35,7 +36,7 @@
     File name:      Deploy-Alteryx.ps1
     Author:         Florian Carrier
     Creation date:  2021-06-13
-    Last modified:  2022-11-25
+    Last modified:  2024-02-12
     Dependencies:   - PowerShell Tool Kit (PSTK)
                     - Alteryx PowerShell Module (PSAYX)
 
@@ -70,6 +71,7 @@ Param (
         "deactivate",
         "install",
         "patch",
+        "repair",
         "restart",
         "restore",
         "show",
@@ -219,6 +221,25 @@ Begin {
         Sync-EnvironmentVariable -Name $EnvironmentVariable -Scope $Properties.EnvironmentVariableScope | Out-Null
     }
 
+    # Check installation path
+    if ($Properties.InstallationPath -eq "") {
+        if ($Unattended -eq $false) {
+            do {
+                Write-Log -Type "WARN" -Message "Path not found $($Properties.InstallationPath)"
+                $Properties.InstallationPath = Read-Host -Prompt "Please enter the Alteryx installation path"
+            } until (Test-Object -Path $Properties.InstallationPath)
+        } else {
+            if ($Action -ne "install") {
+                # Retrieve path from registry
+                $Properties.InstallationPath = Get-AlteryxInstallDirectory
+            } else {
+                Write-Log -Type "ERROR" -Message "No Alteryx installation path has been provided" -ExitCode 1
+            }
+        }
+    } elseif (Test-Object -Path $Properties.InstallationPath -NotFound) {
+        New-Item -Path $Properties.InstallationPath -ItemType "Directory" -Force | Out-Null
+    }
+
     # ----------------------------------------------------------------------------
     # * Options
     # ----------------------------------------------------------------------------
@@ -256,6 +277,7 @@ Process {
         "install"       { Install-Alteryx           -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
         "repair"        { Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                 }
         "patch"         { Invoke-PatchAlteryx       -Properties $Properties -Unattended:$Unattended                                                 }
+        "repair"        { Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                 }
         "restart"       { Invoke-RestartAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
         "restore"       { Invoke-RestoreAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
         "show"          { Show-Configuration        -Properties $Properties -InstallationProperties $InstallationProperties                         }

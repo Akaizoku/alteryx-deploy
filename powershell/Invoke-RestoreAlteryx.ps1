@@ -88,11 +88,10 @@ function Invoke-RestoreAlteryx {
         # Check source backup path
         if ($PSCmdlet.ShouldProcess("Backup files", "Retrieve")) {
             if ($null -eq (Get-KeyValue -Hashtable $Properties -Key "BackupPath" -Silent)) {
-                $SourcePath = $Properties.BackupDirectory
-            } else {
+                # If no path is specified revert to backup repository
                 $SourcePath = $Properties.BackupPath
             }
-            if (Test-Object -Path $SourcePath) {
+            elseif (Test-Object -Path $SourcePath) {
                 if ($SourcePath -is [System.IO.FileInfo]) {
                     if ([System.IO.Path]::GetExtension($SourcePath) -eq ".zip") {
                         # Extract archive file
@@ -106,6 +105,12 @@ function Invoke-RestoreAlteryx {
                 } else {
                     # Select most recent backup in the directory
                     Write-Log -Type "WARN" -Message "No backup file was specified"
+                    if ($Unattended -eq $false) {
+                        $Confirmation = Confirm-Prompt -Prompt "Do you want to fetch the latest backup file?"
+                        if ($Confirmation -eq $false) {
+                            Write-Log -Type "WARN" -Message "Restore operation cancelled by user" -ExitCode 0
+                        }
+                    }
                     Write-Log -Type "DEBUG" -Message $SourcePath
                     Write-Log -Type "INFO" -Message "Retrieving most recent backup"
                     $BackupFile = (Get-Object -Path $SourcePath -ChildItem -Type "File" -Filter "*.zip" | Sort-Object -Descending -Property "LastWriteTime" | Select-Object -First 1).FullName
