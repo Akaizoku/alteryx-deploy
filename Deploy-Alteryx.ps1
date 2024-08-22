@@ -18,6 +18,7 @@
     - configure:    configure the Alteryx application
     - deactivate:   deactivate the Alteryx application license
     - install:      install the Alteryx application
+    - repair:       repair the Alteryx application database
     - patch:        patch upgrade the Alteryx application
     - restart:      restart the Alteryx application
     - restore:      restore a backup of the Alteryx application database
@@ -62,6 +63,9 @@ Param (
     [ValidateSet (
         "activate",
         "backup",
+        "deactivate",
+        "install",
+        "repair",
         "configure",
         "deactivate",
         "install",
@@ -215,23 +219,6 @@ Begin {
         Sync-EnvironmentVariable -Name $EnvironmentVariable -Scope $Properties.EnvironmentVariableScope | Out-Null
     }
 
-    # Check installation path
-    if (($Properties.InstallationPath -eq "") -Or (Test-Object -Path $Properties.InstallationPath -NotFound)) {
-        if ($Unattended -eq $false) {
-            do {
-                Write-Log -Type "WARN" -Message "Path not found $($Properties.InstallationPath)"
-                $Properties.InstallationPath = Read-Host -Prompt "Please enter the Alteryx installation path"
-            } until (Test-Object -Path $Properties.InstallationPath)
-        } else {
-            if ($Action -ne "install") {
-                # Retrieve path from registry
-                $Properties.InstallationPath = Get-AlteryxInstallDirectory
-            } else {
-                Write-Log -Type "ERROR" -Message "No Alteryx installation path has been provided" -ExitCode 1
-            }
-        }
-    }
-
     # ----------------------------------------------------------------------------
     # * Options
     # ----------------------------------------------------------------------------
@@ -267,6 +254,7 @@ Process {
         "configure"     { Set-Configuration         -Properties $Properties -Unattended:$Unattended                                                 }
         "deactivate"    { Invoke-DeactivateAlteryx  -Properties $Properties -Unattended:$Unattended                                                 }
         "install"       { Install-Alteryx           -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
+        "repair"        { Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                 }
         "patch"         { Invoke-PatchAlteryx       -Properties $Properties -Unattended:$Unattended                                                 }
         "restart"       { Invoke-RestartAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
         "restore"       { Invoke-RestoreAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
