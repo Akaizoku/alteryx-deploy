@@ -10,7 +10,7 @@ function Invoke-RestartAlteryx {
         File name:      Invoke-RestartAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-27
-        Last modified:  2022-04-19
+        Last modified:  2024-09-11
     #>
     [CmdletBinding ()]
     Param (
@@ -32,12 +32,27 @@ function Invoke-RestartAlteryx {
         # Get global preference vrariables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # Log function call
-        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
+        Write-Log -Type "DEBUG" -Message $MyInvocation.MyCommand.Name
+        # Process status
+        $RestartProcess = New-ProcessObject -Name $MyInvocation.MyCommand.Name
     }
     Process {
-        Write-Log -Type "CHECK" -Message "Restarting Alteryx Service"
-        Invoke-StopAlteryx  -Properties $Properties -Unattended:$Unattended
-        Invoke-StartAlteryx -Properties $Properties -Unattended:$Unattended
-        Write-Log -Type "CHECK" -Message "Alteryx Service restart complete"
+        $RestartProcess = Update-ProcessObject -ProcessObject $RestartProcess -Status "Running"
+        Write-Log -Type "NOTICE" -Message "Restarting Alteryx Service"
+        $StartProcess = Invoke-StopAlteryx  -Properties $Properties -Unattended:$Unattended
+        if ($StartProcess.Success) {
+            $StopProcess = Invoke-StartAlteryx -Properties $Properties -Unattended:$Unattended
+            if ($StopProcess.Success) {
+                Write-Log -Type "CHECK" -Message "Alteryx Service restart process complete"
+                $RestartProcess = Update-ProcessObject -ProcessObject $RestartProcess -Status "Completed" -Success $true
+            } else {
+                $RestartProcess = Update-ProcessObject -ProcessObject $RestartProcess -Status $StopProcess.Status -ErrorCount $StopProcess.ErrorCount -ExitCode $StopProcess.ExitCode
+            }
+        } else {
+            $RestartProcess = Update-ProcessObject -ProcessObject $RestartProcess -Status $StartProcess.Status -ErrorCount $StartProcess.ErrorCount -ExitCode $StartProcess.ExitCode
+        }
+    }
+    End {
+        return $RestartProcess
     }
 }
