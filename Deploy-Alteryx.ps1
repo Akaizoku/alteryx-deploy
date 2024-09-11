@@ -11,12 +11,13 @@
     .PARAMETER Action
     The action parameter corresponds to the operation to perform.
 
-    Fourteen options are available:
+    Fifteen options are available:
 
     - activate:     activate the Alteryx application license
     - backup:       backup the Alteryx application database
     - configure:    configure the Alteryx application
     - deactivate:   deactivate the Alteryx application license
+    - download:     download latest Alteryx application release
     - install:      install the Alteryx application
     - repair:       repair the Alteryx application database
     - patch:        patch upgrade the Alteryx application
@@ -36,7 +37,7 @@
     File name:      Deploy-Alteryx.ps1
     Author:         Florian Carrier
     Creation date:  2021-06-13
-    Last modified:  2024-02-12
+    Last modified:  2024-09-11
     Dependencies:   - PowerShell Tool Kit (PSTK)
                     - Alteryx PowerShell Module (PSAYX)
 
@@ -65,6 +66,7 @@ Param (
         "activate",
         "backup",
         "deactivate",
+        "download",
         "install",
         "repair",
         "configure",
@@ -153,8 +155,8 @@ Begin {
     # ----------------------------------------------------------------------------
     # Dependencies
     $Modules = [Ordered]@{
-        "PSTK"  = "1.2.4"
-        "PSAYX" = "1.0.1"
+        "PSTK"  = "1.2.6"
+        "PSAYX" = "1.0.4"
     }
     # Load modules
     foreach ($Module in $Modules.GetEnumerator()) {
@@ -197,7 +199,8 @@ Begin {
     # ------------------------------------------------------------------------------
     # Ensure shell is running as 64 bit process
     if ([Environment]::Is64BitProcess -eq $false) {
-        Write-Log -Type "ERROR" -Message "PowerShell is running as a 32-bit process" -ExitCode 1
+        Write-Log -Type "ERROR" -Message "PowerShell is running as a 32-bit process"
+        Write-Log -Type "INFO"  -Message "Please run PowerShell as a 64-bit process" -ExitCode 1
     }
 
     # ----------------------------------------------------------------------------
@@ -270,26 +273,48 @@ Begin {
 Process {
     # Check operation to perform
     switch ($Action) {
-        "activate"      { Invoke-ActivateAlteryx    -Properties $Properties -Unattended:$Unattended                                                 }
-        "backup"        { Invoke-BackupAlteryx      -Properties $Properties -Unattended:$Unattended                                                 }
-        "configure"     { Set-Configuration         -Properties $Properties -Unattended:$Unattended                                                 }
-        "deactivate"    { Invoke-DeactivateAlteryx  -Properties $Properties -Unattended:$Unattended                                                 }
-        "install"       { Install-Alteryx           -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
-        "repair"        { Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                 }
-        "patch"         { Invoke-PatchAlteryx       -Properties $Properties -Unattended:$Unattended                                                 }
-        "repair"        { Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                 }
-        "restart"       { Invoke-RestartAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
-        "restore"       { Invoke-RestoreAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
-        "show"          { Show-Configuration        -Properties $Properties -InstallationProperties $InstallationProperties                         }
-        "start"         { Invoke-StartAlteryx       -Properties $Properties -Unattended:$Unattended                                                 }
-        "stop"          { Invoke-StopAlteryx        -Properties $Properties -Unattended:$Unattended                                                 }
-        "uninstall"     { Uninstall-Alteryx         -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
-        "upgrade"       { Update-Alteryx            -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
-        default         { Write-Log -Type "ERROR"   -Message """$Action"" operation is not supported" -ExitCode 1                                   }
+        "activate"      { $Process = Invoke-ActivateAlteryx    -Properties $Properties -Unattended:$Unattended                                                  }
+        "backup"        { $Process = Invoke-BackupAlteryx      -Properties $Properties -Unattended:$Unattended                                                  }
+        "configure"     { $Process = Set-Configuration         -Properties $Properties -Unattended:$Unattended                                                  }
+        "deactivate"    { $Process = Invoke-DeactivateAlteryx  -Properties $Properties -Unattended:$Unattended                                                  }
+        "download"      { $Process = Invoke-DownloadAlteryx    -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
+        "install"       { $Process = Install-Alteryx           -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
+        "repair"        { $Process = Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                  }
+        "patch"         { $Process = Invoke-PatchAlteryx       -Properties $Properties -Unattended:$Unattended                                                  }
+        "repair"        { $Process = Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                  }
+        "restart"       { $Process = Invoke-RestartAlteryx     -Properties $Properties -Unattended:$Unattended                                                  }
+        "restore"       { $Process = Invoke-RestoreAlteryx     -Properties $Properties -Unattended:$Unattended                                                  }
+        "show"          { $Process = Show-Configuration        -Properties $Properties -InstallationProperties $InstallationProperties                          }
+        "start"         { $Process = Invoke-StartAlteryx       -Properties $Properties -Unattended:$Unattended                                                  }
+        "stop"          { $Process = Invoke-StopAlteryx        -Properties $Properties -Unattended:$Unattended                                                  }
+        "uninstall"     { $Process = Uninstall-Alteryx         -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
+        "upgrade"       { $Process = Update-Alteryx            -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
+        default         { Write-Log -Type "ERROR" -Message """$Action"" operation is not supported" -ExitCode 1                                                 }
     }
 }
 
 End {
-    # Stop script and transcript
-    Stop-Script -ExitCode 0
+    # Check outcome and gracefully end script
+    Write-Log -Type "DEBUG" -Message ($Process | Format-Table)
+    if ($Process.Success -And ($Process.Status -eq "Completed")) {
+        Write-Log -Type "CHECK" -Message "Alteryx $Action process completed successfully" -ExitCode $Process.ExitCode
+    } else {
+        if ($Process.ErrorCount -gt 0) {
+            if ($Process.ErrorCount -gt 1) {
+                $Errors = "with $($Process.ErrorCount) errors"
+            } else {
+                $Errors = "with $($Process.ErrorCount) error"
+            }
+        } else {
+            $Errors = ""
+        }
+        switch ($Process.Status) {
+            "Cancelled" { $Outcome = "was cancelled"    }
+            "Completed" { $Outcome = "completed"        }
+            "Failed"    { $Outcome = "failed"           }
+            "Stopped"   { $Outcome = "was stopped"      }
+            default     { $Outcome = "failed"           }
+        }
+        Write-Log -Type "ERROR" -Message "Alteryx $Action process $Outcome $Errors" -ExitCode $Process.ExitCode
+    }
 }
