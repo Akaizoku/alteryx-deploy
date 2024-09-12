@@ -295,22 +295,25 @@ Process {
 
 End {
     # Check outcome and gracefully end script
-    Write-Log -Type "DEBUG" -Message ($Process | Format-Table)
-    if ($Process.Success -And ($Process.Status -eq "Completed")) {
-        Write-Log -Type "CHECK" -Message "Alteryx $Action process completed successfully" -ExitCode $Process.ExitCode
-    } else {
-        if ($Process.ErrorCount -gt 0) {
-            if ($Process.ErrorCount -gt 1) {
-                $Errors = "with $($Process.ErrorCount) errors"
-            } else {
-                $Errors = "with $($Process.ErrorCount) error"
-            }
+    $Process = $Process[0]
+    if ($Process.ErrorCount -gt 0) {
+        if ($Process.ErrorCount -gt 1) {
+            $Errors = "with $($Process.ErrorCount) errors"
         } else {
-            $Errors = ""
+            $Errors = "with $($Process.ErrorCount) error"
         }
+    } else {
+        $Errors = ""
+    }
+    if ($Process.Status -eq "Completed") {
+        if ($Process.Success) {
+            Write-Log -Type "CHECK" -Message "Alteryx $Action process completed successfully" -ExitCode $Process.ExitCode
+        } else {
+            Write-Log -Type "WARN" -Message "Alteryx $Action process completed $Errors" -ExitCode $Process.ExitCode
+        }
+    } else {
         switch ($Process.Status) {
             "Cancelled" { $Outcome = "was cancelled"    }
-            "Completed" { $Outcome = "completed"        }
             "Failed"    { $Outcome = "failed"           }
             "Stopped"   { $Outcome = "was stopped"      }
             default     { $Outcome = "failed"           }
