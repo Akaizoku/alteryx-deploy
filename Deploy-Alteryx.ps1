@@ -20,6 +20,7 @@
     - download:     download latest Alteryx application release
     - install:      install the Alteryx application
     - repair:       repair the Alteryx application database
+    - open:         open the Alteryx application
     - patch:        patch upgrade the Alteryx application
     - ping:         check the status of the Alteryx application
     - repair:       repair the Alteryx application database
@@ -38,7 +39,7 @@
     File name:      Deploy-Alteryx.ps1
     Author:         Florian Carrier
     Creation date:  2021-06-13
-    Last modified:  2024-09-12
+    Last modified:  2024-09-16
     Dependencies:   - PowerShell Tool Kit (PSTK)
                     - Alteryx PowerShell Module (PSAYX)
 
@@ -73,6 +74,7 @@ Param (
         "configure",
         "deactivate",
         "install",
+        "open",
         "patch",
         "ping",
         "repair",
@@ -259,6 +261,7 @@ Begin {
       )
     $InstallationProperties = Get-Properties -File $Properties.InstallationOptions -Directory $Properties.ConfDirectory -ValidateSet $ValidateSet
     $InstallationProperties.Add("Product", $Product)
+    $Properties.Add("Product", $Product)
     # Optional parameters
     if ($PSBoundParameters.ContainsKey("Version")) {
         $Properties.Version = $Version
@@ -277,23 +280,24 @@ Begin {
 Process {
     # Check operation to perform
     switch ($Action) {
-        "activate"      { $Process = Invoke-ActivateAlteryx    -Properties $Properties -Unattended:$Unattended                                                  }
-        "backup"        { $Process = Invoke-BackupAlteryx      -Properties $Properties -Unattended:$Unattended                                                  }
-        "configure"     { $Process = Set-Configuration         -Properties $Properties -ScriptProperties $ScriptProperties                                      }
-        "deactivate"    { $Process = Invoke-DeactivateAlteryx  -Properties $Properties -Unattended:$Unattended                                                  }
-        "download"      { $Process = Invoke-DownloadAlteryx    -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
-        "install"       { $Process = Install-Alteryx           -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
-        "repair"        { $Process = Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                  }
-        "patch"         { $Process = Invoke-PatchAlteryx       -Properties $Properties -Unattended:$Unattended                                                  }
-        "ping"          { $Process = Invoke-PingAlteryx        -Properties $Properties -Unattended:$Unattended                                                  }
-        "repair"        { $Process = Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                  }
-        "restart"       { $Process = Invoke-RestartAlteryx     -Properties $Properties -Unattended:$Unattended                                                  }
-        "restore"       { $Process = Invoke-RestoreAlteryx     -Properties $Properties -Unattended:$Unattended                                                  }
-        "show"          { $Process = Show-Configuration        -Properties $Properties -InstallationProperties $InstallationProperties                          }
-        "start"         { $Process = Invoke-StartAlteryx       -Properties $Properties -Unattended:$Unattended                                                  }
-        "stop"          { $Process = Invoke-StopAlteryx        -Properties $Properties -Unattended:$Unattended                                                  }
-        "uninstall"     { $Process = Uninstall-Alteryx         -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
-        "upgrade"       { $Process = Update-Alteryx            -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
+        "activate"      { $Process = Invoke-ActivateAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
+        "backup"        { $Process = Invoke-BackupAlteryx       -Properties $Properties -Unattended:$Unattended                                                 }
+        "configure"     { $Process = Set-Configuration          -Properties $Properties -ScriptProperties $ScriptProperties                                     }
+        "deactivate"    { $Process = Invoke-DeactivateAlteryx   -Properties $Properties -Unattended:$Unattended                                                 }
+        "download"      { $Process = Invoke-DownloadAlteryx     -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
+        "install"       { $Process = Install-Alteryx            -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
+        "repair"        { $Process = Repair-Alteryx             -Properties $Properties -Unattended:$Unattended                                                 }
+        "open"          { $Process = Open-Alteryx               -Properties $Properties -Unattended:$Unattended                                                 }
+        "patch"         { $Process = Invoke-PatchAlteryx        -Properties $Properties -Unattended:$Unattended                                                 }
+        "ping"          { $Process = Invoke-PingAlteryx         -Properties $Properties -Unattended:$Unattended                                                 }
+        "repair"        { $Process = Repair-Alteryx             -Properties $Properties -Unattended:$Unattended                                                 }
+        "restart"       { $Process = Invoke-RestartAlteryx      -Properties $Properties -Unattended:$Unattended                                                 }
+        "restore"       { $Process = Invoke-RestoreAlteryx      -Properties $Properties -Unattended:$Unattended                                                 }
+        "show"          { $Process = Show-Configuration         -Properties $Properties -InstallationProperties $InstallationProperties                         }
+        "start"         { $Process = Invoke-StartAlteryx        -Properties $Properties -Unattended:$Unattended                                                 }
+        "stop"          { $Process = Invoke-StopAlteryx         -Properties $Properties -Unattended:$Unattended                                                 }
+        "uninstall"     { $Process = Uninstall-Alteryx          -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
+        "upgrade"       { $Process = Update-Alteryx             -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
         default         { Write-Log -Type "ERROR" -Message """$Action"" operation is not supported" -ExitCode 1                                                 }
     }
 }
