@@ -100,15 +100,17 @@ function Invoke-RestoreAlteryx {
             }
             # Look for backup file
             if (Test-Object -Path $SourcePath) {
-                if ($SourcePath -is [System.IO.FileInfo]) {
-                    if ([System.IO.Path]::GetExtension($SourcePath) -eq ".zip") {
+                $Source = Get-Item -Path $SourcePath
+                # Check if source is a file
+                if ($Source.PSIsContainer -eq $false) {
+                    if ((Format-String -String $Source.Extension -Format "LowerCase") -eq ".zip") {
                         # Extract archive file
                         Write-Log -Type "INFO" -Message "Extract backup file contents"
                         $BackupPath = Join-Path -Path $Properties.TempDirectory -ChildPath ([System.IO.Path]::GetFileNameWithoutExtension($SourcePath))
                         Expand-Archive -Path $SourcePath -DestinationPath $BackupPath -Force -WhatIf:$WhatIfPreference
                         $Staging = $true
                     } else {
-                        Write-Log -Type "ERROR" -Message "Only ZIP or uncompressed files are supported"
+                        Write-Log -Type "ERROR" -Message "Only ZIP files are supported"
                         $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Failed" -ErrorCode 1 -ExitCode 1
                         return $RestoreProcess
                     }
