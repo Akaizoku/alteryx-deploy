@@ -10,7 +10,7 @@ function Invoke-BackupAlteryx {
         File name:      Invoke-BackupAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-26
-        Last modified:  2024-09-11
+        Last modified:  2024-09-16
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -38,7 +38,7 @@ function Invoke-BackupAlteryx {
         # Process status
         $BackupProcess = New-ProcessObject -Name $MyInvocation.MyCommand.Name
         # Variables
-        $Version        = Get-AlteryxRegistryVersion
+        $Version        = Get-AlteryxVersion
         $ISOTimeStamp   = Get-Date  -Format "yyyyMMdd_HHmmss"
         $BackupPath     = Join-Path -Path $Properties.BackupDirectory   -ChildPath "${ISOTimeStamp}_Alteryx_Server_$($Version).zip"
         $TempBackupPath = Join-Path -Path $Properties.TempDirectory     -ChildPath "${ISOTimeStamp}_Alteryx_Server_$($Version)"
