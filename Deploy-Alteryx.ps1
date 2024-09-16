@@ -11,7 +11,7 @@
     .PARAMETER Action
     The action parameter corresponds to the operation to perform.
 
-    Fifteen options are available:
+    Sixteen options are available:
 
     - activate:     activate the Alteryx application license
     - backup:       backup the Alteryx application database
@@ -21,6 +21,7 @@
     - install:      install the Alteryx application
     - repair:       repair the Alteryx application database
     - patch:        patch upgrade the Alteryx application
+    - ping:         check the status of the Alteryx application
     - repair:       repair the Alteryx application database
     - restart:      restart the Alteryx application
     - restore:      restore a backup of the Alteryx application database
@@ -37,7 +38,7 @@
     File name:      Deploy-Alteryx.ps1
     Author:         Florian Carrier
     Creation date:  2021-06-13
-    Last modified:  2024-09-11
+    Last modified:  2024-09-12
     Dependencies:   - PowerShell Tool Kit (PSTK)
                     - Alteryx PowerShell Module (PSAYX)
 
@@ -73,6 +74,7 @@ Param (
         "deactivate",
         "install",
         "patch",
+        "ping",
         "repair",
         "restart",
         "restore",
@@ -144,11 +146,13 @@ Begin {
     # General
     $ISOTimeStamp       = Get-Date -Format "yyyyMMdd_HHmmss"
 
-    # Configuration
-    $LibDirectory       = Join-Path -Path $PSScriptRoot -ChildPath "lib"
-    $ConfDirectory      = Join-Path -Path $PSScriptRoot -ChildPath "conf"
-    $DefaultProperties  = "default.ini"
-    $CustomProperties   = "custom.ini"
+    # Script configuration
+    $ScriptProperties = [Ordered]@{
+        LibDirectory        = (Join-Path -Path $PSScriptRoot -ChildPath "lib")
+        ConfDirectory       = (Join-Path -Path $PSScriptRoot -ChildPath "conf")
+        DefaultProperties   = "default.ini"
+        CustomProperties    = "custom.ini"
+    }
 
     # ----------------------------------------------------------------------------
     # * Modules
@@ -162,7 +166,7 @@ Begin {
     foreach ($Module in $Modules.GetEnumerator()) {
         try {
             # Check if package is available locally
-            Import-Module -Name (Join-Path -Path $LibDirectory -ChildPath $Module.Name) -MinimumVersion $Module.Value -ErrorAction "Stop" -Force
+            Import-Module -Name (Join-Path -Path $ScriptProperties.LibDirectory -ChildPath $Module.Name) -MinimumVersion $Module.Value -ErrorAction "Stop" -Force
             $ModuleVersion = (Get-Module -Name $Module.Name).Version
             Write-Log -Type "CHECK" -Object "The $($Module.Name) module (v$ModuleVersion) was successfully loaded from the library directory."
         } catch {
@@ -172,7 +176,7 @@ Begin {
                 $ModuleVersion = (Get-Module -Name $Module.Name).Version
                 Write-Log -Type "CHECK" -Object "The $($Module.Name) module (v$ModuleVersion) was successfully loaded."
             } catch {
-                Throw "The $($Module.Name) module (v$($Module.Value)) could not be loaded. Make sure it has been installed on the machine or packaged in the ""$LibDirectory"" directory"
+                Throw "The $($Module.Name) module (v$($Module.Value)) could not be loaded. Make sure it has been installed on the machine or packaged in the ""$($ScriptProperties.LibDirectory)"" directory"
             }
         }
     }
@@ -181,7 +185,7 @@ Begin {
     # * Script configuration
     # ----------------------------------------------------------------------------
     # General settings
-    $Properties = Get-Properties -File $DefaultProperties -Directory $ConfDirectory -Custom $CustomProperties
+    $Properties = Get-Properties -File $ScriptProperties.DefaultProperties -Directory $ScriptProperties.ConfDirectory -Custom $ScriptProperties.CustomProperties
     # Resolve relative paths
     Write-Log -Type "DEBUG" -Message "Script structure check"
     $Properties = Get-Path -PathToResolve $Properties.RelativePaths -Hashtable $Properties -Root $PSScriptRoot
@@ -275,12 +279,13 @@ Process {
     switch ($Action) {
         "activate"      { $Process = Invoke-ActivateAlteryx    -Properties $Properties -Unattended:$Unattended                                                  }
         "backup"        { $Process = Invoke-BackupAlteryx      -Properties $Properties -Unattended:$Unattended                                                  }
-        "configure"     { $Process = Set-Configuration         -Properties $Properties -Unattended:$Unattended                                                  }
+        "configure"     { $Process = Set-Configuration         -Properties $Properties -ScriptProperties $ScriptProperties                                      }
         "deactivate"    { $Process = Invoke-DeactivateAlteryx  -Properties $Properties -Unattended:$Unattended                                                  }
         "download"      { $Process = Invoke-DownloadAlteryx    -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
         "install"       { $Process = Install-Alteryx           -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
         "repair"        { $Process = Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                  }
         "patch"         { $Process = Invoke-PatchAlteryx       -Properties $Properties -Unattended:$Unattended                                                  }
+        "ping"          { $Process = Invoke-PingAlteryx        -Properties $Properties -Unattended:$Unattended                                                  }
         "repair"        { $Process = Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                  }
         "restart"       { $Process = Invoke-RestartAlteryx     -Properties $Properties -Unattended:$Unattended                                                  }
         "restore"       { $Process = Invoke-RestoreAlteryx     -Properties $Properties -Unattended:$Unattended                                                  }
