@@ -221,7 +221,6 @@ function Set-Configuration {
         # * Configure license file
         Write-Log -Type "INFO" -Message "Configuring license file"
         if ($PSCmdlet.ShouldProcess("License file", "Configure")) {
-            Write-Log -Type "NOTICE" -Message $Properties
             $LicenseFilePath        = Join-Path -Path "$PSScriptRoot/.." -ChildPath "$($Properties.ResDirectory)/$($Properties.LicenseFile)"
             $ConfigureLicenseFile   = $true
             if (Test-Path -Path $LicenseFilePath) {
