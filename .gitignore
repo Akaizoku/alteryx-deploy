@@ -6,4 +6,5 @@ tmp
 
 # Ignore custom configuration files
 custom.ini
-registry.info
+*.token
+*.key
