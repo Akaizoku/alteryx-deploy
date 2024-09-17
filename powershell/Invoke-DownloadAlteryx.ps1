@@ -10,7 +10,7 @@ function Invoke-DownloadAlteryx {
         File name:      Invoke-DownloadAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2024-09-04
-        Last modified:  2024-09-16
+        Last modified:  2024-09-17
     #>
     [CmdletBinding ()]
     Param (
@@ -49,8 +49,11 @@ function Invoke-DownloadAlteryx {
             "Server"    = "Alteryx Server"
         }
         $ProductID = $Products.$($Properties.Product)
+        # Alteryx installation registry key
+        $RegistryKey = "HKLM:HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\SRC\Alteryx"
         # License API refresh token
-        $RefreshToken = Get-Content -Path $Properties.LicenseAPIFile -Raw
+        $LicenseAPIPath = Join-Path -Path $Properties.ResDirectory -ChildPath $Properties.LicenseAPIFile
+        $RefreshToken = Get-Content -Path $LicenseAPIPath -Raw
         # Placeholder
         $Skip = $false
     }
@@ -60,7 +63,11 @@ function Invoke-DownloadAlteryx {
         $AccessToken    = Update-AlteryxLicenseToken -Token $RefreshToken -Type "Access"
         Write-Log -Type "DEBUG" -Message $AccessToken
         # Check current and target versions
-        $CurrentVersion = Get-AlteryxVersion
+        if (Test-Path -Path $RegistryKey) {
+            $CurrentVersion = Get-AlteryxVersion
+        } else {
+            $CurrentVersion = "0.0"
+        }
         $MajorVersion   = [System.String]::Concat([System.Version]::Parse($CurrentVersion).Major    , ".", [System.Version]::Parse($CurrentVersion).Minor)
         $TargetVersion  = [System.String]::Concat([System.Version]::Parse($Properties.Version).Major, ".", [System.Version]::Parse($Properties.Version).Minor)
         # Check latest version
