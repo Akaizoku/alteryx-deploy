@@ -258,7 +258,7 @@ Begin {
         "PredictiveTools"
         "IntelligenceSuite"
         "DataPackages"
-      )
+    )
     $InstallationProperties = Get-Properties -File $Properties.InstallationOptions -Directory $Properties.ConfDirectory -ValidateSet $ValidateSet
     $InstallationProperties.Add("Product", $Product)
     $Properties.Add("Product", $Product)
