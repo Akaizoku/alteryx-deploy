@@ -55,7 +55,7 @@ function Install-Alteryx {
         # Get global preference variables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # Log function call
-        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
+        Write-Log -Type "DEBUG" -Message $MyInvocation.MyCommand.Name
         # Variables
         $ISOTimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
         $Tags = [Ordered]@{"Version" = $Properties.Version}
