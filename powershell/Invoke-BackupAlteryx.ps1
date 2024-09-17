@@ -10,7 +10,7 @@ function Invoke-BackupAlteryx {
         File name:      Invoke-BackupAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-26
-        Last modified:  2024-03-26
+        Last modified:  2024-09-16
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -34,9 +34,11 @@ function Invoke-BackupAlteryx {
         # Get global preference vrariables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # Log function call
-        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
+        Write-Log -Type "DEBUG" -Message $MyInvocation.MyCommand.Name
+        # Process status
+        $BackupProcess = New-ProcessObject -Name $MyInvocation.MyCommand.Name
         # Variables
-        $Version        = Get-AlteryxRegistryVersion
+        $Version        = Get-AlteryxVersion
         $ISOTimeStamp   = Get-Date  -Format "yyyyMMdd_HHmmss"
         $BackupPath     = Join-Path -Path $Properties.BackupDirectory   -ChildPath "${ISOTimeStamp}_Alteryx_Server_$($Version).zip"
         $TempBackupPath = Join-Path -Path $Properties.TempDirectory     -ChildPath "${ISOTimeStamp}_Alteryx_Server_$($Version)"
@@ -63,7 +65,8 @@ function Invoke-BackupAlteryx {
         }
     }
     Process {
-        Write-Log -Type "CHECK" -Message "Start $BackupType backup of Alteryx Server"
+        $BackupProcess = Update-ProcessObject -ProcessObject $BackupProcess -Status "Running"
+        Write-Log -Type "NOTICE" -Message "Start $BackupType backup of Alteryx Server"
         # ----------------------------------------------------------------------------
         # Check Alteryx service status
         Write-Log -Type "INFO" -Message "Check Alteryx Service status"
@@ -74,10 +77,16 @@ function Invoke-BackupAlteryx {
                 Write-Log -Type "DEBUG" -Message $Service
                 $ServiceStatus = $WindowsService.Status
                 if ($ServiceStatus -eq "Running") {
-                    Invoke-StopAlteryx -Properties $Properties -Unattended:$Unattended
+                    $StopProcess = Invoke-StopAlteryx -Properties $Properties -Unattended:$Unattended
+                    if ($StopProcess.Success -eq $false) {
+                        $BackupProcess = Update-ProcessObject -ProcessObject $BackupProcess -Status $StopProcess.Status -ErrorCount $StopProcess.ErrorCount -ExitCode $StopProcess.ExitCode
+                        return $BackupProcess
+                    }
                 }
             } else {
-                Write-Log -Type "ERROR" -Message "Alteryx Service ($Service) could not be found" -ExitCode 1
+                Write-Log -Type "ERROR" -Message "Alteryx Service ($Service) could not be found"
+                $BackupProcess = Update-ProcessObject -ProcessObject $BackupProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                return $BackupProcess
             }
         }
         # ----------------------------------------------------------------------------
@@ -92,7 +101,9 @@ function Invoke-BackupAlteryx {
                     $DatabaseBackup = Backup-AlteryxDatabase -Path $MongoDBPath -ServicePath $ServicePath
                     if ($DatabaseBackup -match "EMongoDump failed") {
                         Write-Log -Type "ERROR" -Message "$DatabaseBackup"
-                        Write-Log -Type "ERROR" -Message "Database backup failed" -ExitCode 1
+                        Write-Log -Type "ERROR" -Message "Database backup failed"
+                        $BackupProcess = Update-ProcessObject -ProcessObject $BackupProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                        return $BackupProcess
                     } else {
                         Write-Log -Type "DEBUG" -Message "$DatabaseBackup"
                     }
@@ -151,7 +162,8 @@ function Invoke-BackupAlteryx {
             Compress-Archive -Path "$TempBackupPath\*" -DestinationPath $BackupPath -CompressionLevel "Optimal" -WhatIf:$WhatIfPreference
             Write-Log -Type "DEBUG" -Message $BackupPath
             if (Test-Object -Path $BackupPath -NotFound) {
-                Write-Log -Type "ERROR" -Message "Backup files compression failed" -ErrorCode 1
+                Write-Log -Type "ERROR" -Message "Backup files compression failed"
+                $BackupProcess = Update-ProcessObject -ProcessObject $BackupProcess -ErrorCount 1
             } else {
                 # Remove staging folder
                 Write-Log -Type "INFO" -Message "Remove staging backup folder"
@@ -163,11 +175,15 @@ function Invoke-BackupAlteryx {
         # ----------------------------------------------------------------------------
         # Restart service if it was running before
         if ($ServiceStatus -eq "Running") {
-            Invoke-StartAlteryx -Properties $Properties -Unattended:$Unattended
+            $StartProcess = Invoke-StartAlteryx -Properties $Properties -Unattended:$Unattended
+            if ($StartProcess.Success -eq $false) {
+                $BackupProcess = Update-ProcessObject -ProcessObject $BackupProcess -ErrorCount 1
+            }
         }
+        Write-Log -Type "CHECK" -Message "Alteryx Server $BackupType backup complete"
+        $BackupProcess = Update-ProcessObject -ProcessObject $BackupProcess -Status "Completed" -Success $true
     }
     End {
-        # If no error occured
-        Write-Log -Type "CHECK" -Message "Alteryx Server $BackupType backup complete"
+        return $BackupProcess
     }
 }

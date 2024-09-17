@@ -10,13 +10,13 @@ function Invoke-RestoreAlteryx {
         File name:      Invoke-RestoreAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-26
-        Last modified:  2022-04-19
+        Last modified:  2024-09-11
         Comment:        User configuration files are out of scope of this procedure:
                         - %APPDATA%\Alteryx\Engine\UserConnections.xml
                         - %APPDATA%\Alteryx\Engine\UserAlias.xml
 
         .LINK
-        https://help.alteryx.com/20213/server/server-host-recovery-guide
+        https://help.alteryx.com/current/en/server/install/server-host-recovery-guide.html
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -40,7 +40,9 @@ function Invoke-RestoreAlteryx {
         # Get global preference vrariables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # Log function call
-        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
+        Write-Log -Type "DEBUG" -Message $MyInvocation.MyCommand.Name
+        # Process status
+        $RestoreProcess = New-ProcessObject -Name $MyInvocation.MyCommand.Name
         # Variables
         $ServicePath    = Join-Path -Path $Properties.InstallationPath -ChildPath "bin\AlteryxService.exe"
         $Staging        = $false
@@ -67,7 +69,8 @@ function Invoke-RestoreAlteryx {
         }
     }
     Process {
-        Write-Log -Type "CHECK" -Message "Start $RestoreType restore of Alteryx Server"
+        $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Running"
+        Write-Log -Type "NOTICE" -Message "Start $RestoreType restore of Alteryx Server"
         if ($PSCmdlet.ShouldProcess("Alteryx Service", "Stop")) {
             # ----------------------------------------------------------------------------
             # Check Alteryx service status
@@ -81,40 +84,61 @@ function Invoke-RestoreAlteryx {
                     Invoke-StopAlteryx -Properties $Properties -Unattended:$Unattended
                 }
             } else {
-                Write-Log -Type "ERROR" -Message "Alteryx Service ($Service) could not be found" -ExitCode 1
+                Write-Log -Type "ERROR" -Message "Alteryx Service ($Service) could not be found"
+                $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Failed" -ErrorCode 1 -ExitCode 1
+                return $RestoreProcess
             }
         }
         # ----------------------------------------------------------------------------
         # Check source backup path
         if ($PSCmdlet.ShouldProcess("Backup files", "Retrieve")) {
+            # Check if custom backup path is specified
             if ($null -eq (Get-KeyValue -Hashtable $Properties -Key "BackupPath" -Silent)) {
-                # If no path is specified revert to backup repository
+                $SourcePath = $Properties.BackupDirectory
+            } else {
                 $SourcePath = $Properties.BackupPath
             }
-            elseif (Test-Object -Path $SourcePath) {
-                if ($SourcePath -is [System.IO.FileInfo]) {
-                    if ([System.IO.Path]::GetExtension($SourcePath) -eq ".zip") {
+            # Look for backup file
+            if (Test-Object -Path $SourcePath) {
+                $Source = Get-Item -Path $SourcePath
+                # Check if source is a file
+                if ($Source.PSIsContainer -eq $false) {
+                    if ((Format-String -String $Source.Extension -Format "LowerCase") -eq ".zip") {
                         # Extract archive file
                         Write-Log -Type "INFO" -Message "Extract backup file contents"
                         $BackupPath = Join-Path -Path $Properties.TempDirectory -ChildPath ([System.IO.Path]::GetFileNameWithoutExtension($SourcePath))
                         Expand-Archive -Path $SourcePath -DestinationPath $BackupPath -Force -WhatIf:$WhatIfPreference
                         $Staging = $true
                     } else {
-                        Write-Log -Type "ERROR" -Message "Only ZIP or uncompressed files are supported" -ExitCode 1
+                        Write-Log -Type "ERROR" -Message "Only ZIP files are supported"
+                        $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Failed" -ErrorCode 1 -ExitCode 1
+                        return $RestoreProcess
                     }
                 } else {
                     # Select most recent backup in the directory
                     Write-Log -Type "WARN" -Message "No backup file was specified"
+                    # Ask user confirmation on most recent file
                     if ($Unattended -eq $false) {
                         $Confirmation = Confirm-Prompt -Prompt "Do you want to fetch the latest backup file?"
                         if ($Confirmation -eq $false) {
-                            Write-Log -Type "WARN" -Message "Restore operation cancelled by user" -ExitCode 0
+                            Write-Log -Type "WARN" -Message "Restore operation cancelled by user"
+                            $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Cancelled"
+                            return $RestoreProcess
                         }
                     }
                     Write-Log -Type "DEBUG" -Message $SourcePath
                     Write-Log -Type "INFO" -Message "Retrieving most recent backup"
                     $BackupFile = (Get-Object -Path $SourcePath -ChildItem -Type "File" -Filter "*.zip" | Sort-Object -Descending -Property "LastWriteTime" | Select-Object -First 1).FullName
                     Write-Log -Type "DEBUG" -Message $BackupFile
+                    # Ask user confirmation on backup file
+                    if ($Unattended -eq $false) {
+                        $Confirmation = Confirm-Prompt -Prompt "Do you want to restore backup from $BackupFile?"
+                        if ($Confirmation -eq $false) {
+                            Write-Log -Type "WARN" -Message "Restore operation cancelled by user"
+                            $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Cancelled"
+                            return $RestoreProcess
+                        }
+                    }
                     # Extract archive file
                     Write-Log -Type "INFO" -Message "Extract backup file contents"
                     $BackupPath = Join-Path -Path $Properties.TempDirectory -ChildPath ([System.IO.Path]::GetFileNameWithoutExtension($BackupFile))
@@ -122,7 +146,9 @@ function Invoke-RestoreAlteryx {
                     $Staging = $true
                 }
             } else {
-                Write-Log -Type "ERROR" -Message "No database backup could be found" -ExitCode 1
+                Write-Log -Type "ERROR" -Message "No database backup could be found"
+                $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                return $RestoreProcess
             }
         }
         # ----------------------------------------------------------------------------
@@ -233,6 +259,7 @@ function Invoke-RestoreAlteryx {
                     $ControllerSettingsXML.Save($ConfigurationFiles.RunTimeSettings)
                 } else {
                     Write-Log -Type "WARN" -Message "Encrypted controller token could not be found"
+                    $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -ErrorCount 1
                 }
             }
             Write-Log -Type "INFO" -Message "Restore controller token"
@@ -244,12 +271,18 @@ function Invoke-RestoreAlteryx {
                     if ($SetToken -match "failed") {
                         Write-Log -Type "ERROR" -Message $SetToken
                         Write-Log -Type "ERROR" -Message "Controller token update failed"
+                        $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -ErrorCount 1
                     } else {
                         # Ignore successfull empty output
                         if ($SetToken -ne "") {
                             Write-Log -Type "DEBUG" -Message $SetToken
                         }
                     }
+                } else {
+                    Write-Log -Type "DEBUG" -Message $TokenFile
+                    Write-Log -Type "ERROR" -Message "No controller token backup file could not be found"
+                    $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -ErrorCount 1
+                    Write-Log -Type "WARN" -Message "Skipping controller token restore"
                 }
             }
         }
@@ -290,6 +323,7 @@ function Invoke-RestoreAlteryx {
                     $StorageSettingsXML.Save($ConfigurationFiles.RunTimeSettings)
                 } else {
                     Write-Log -Type "WARN" -Message "RunTimeSettings.xml backup configuration file could not be located"
+                    $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -ErrorCount 1
                 }
             }
         }
@@ -311,13 +345,15 @@ function Invoke-RestoreAlteryx {
                     $DatabaseRestore = Restore-AlteryxDatabase -SourcePath $MongoDBPath -TargetPath $TargetPath -ServicePath $ServicePath
                     if ($DatabaseRestore -match "failed") {
                         Write-Log -Type "ERROR" -Message $DatabaseRestore
-                        Write-Log -Type "ERROR" -Message "Database restore failed" -ExitCode 1
+                        Write-Log -Type "ERROR" -Message "Database restore failed"
+                        $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
                     } else {
                         Write-Log -Type "DEBUG" -Message $DatabaseRestore
                     }
                 } else {
                     Write-Log -Type "ERROR" -Message "User-managed MongoDB is not supported"
                     Write-Log -Type "WARN"  -Message "Skipping database restore"
+                    $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
                 }
             }
         }
@@ -333,9 +369,14 @@ function Invoke-RestoreAlteryx {
                 Invoke-StartAlteryx -Properties $Properties -Unattended:$Unattended
             }
         }
+        if (($RestoreProcess.ErrorCount -eq 0) -And ($RestoreProcess.ExitCode -eq 0)) {
+            Write-Log -Type "CHECK" -Message "Alteryx Server $RestoreType restore complete"
+            $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Completed" -Success $true
+        } else {
+            Write-Log -Type "ERROR" -Message "Alteryx Server $RestoreType restore could not be completed"
+        }
     }
     End {
-        # If no error occured
-        Write-Log -Type "CHECK" -Message "Alteryx Server $RestoreType restore complete"
+        return $RestoreProcess
     }
 }

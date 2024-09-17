@@ -11,7 +11,7 @@
     .PARAMETER Action
     The action parameter corresponds to the operation to perform.
 
-    Fifteen options are available:
+    Sixteen options are available:
 
     - activate:     activate the Alteryx application license
     - backup:       backup the Alteryx application database
@@ -20,7 +20,9 @@
     - download:     download latest Alteryx application release
     - install:      install the Alteryx application
     - repair:       repair the Alteryx application database
+    - open:         open the Alteryx application
     - patch:        patch upgrade the Alteryx application
+    - ping:         check the status of the Alteryx application
     - repair:       repair the Alteryx application database
     - restart:      restart the Alteryx application
     - restore:      restore a backup of the Alteryx application database
@@ -37,7 +39,7 @@
     File name:      Deploy-Alteryx.ps1
     Author:         Florian Carrier
     Creation date:  2021-06-13
-    Last modified:  2024-09-11
+    Last modified:  2024-09-16
     Dependencies:   - PowerShell Tool Kit (PSTK)
                     - Alteryx PowerShell Module (PSAYX)
 
@@ -72,7 +74,9 @@ Param (
         "configure",
         "deactivate",
         "install",
+        "open",
         "patch",
+        "ping",
         "repair",
         "restart",
         "restore",
@@ -144,11 +148,13 @@ Begin {
     # General
     $ISOTimeStamp       = Get-Date -Format "yyyyMMdd_HHmmss"
 
-    # Configuration
-    $LibDirectory       = Join-Path -Path $PSScriptRoot -ChildPath "lib"
-    $ConfDirectory      = Join-Path -Path $PSScriptRoot -ChildPath "conf"
-    $DefaultProperties  = "default.ini"
-    $CustomProperties   = "custom.ini"
+    # Script configuration
+    $ScriptProperties = [Ordered]@{
+        LibDirectory        = (Join-Path -Path $PSScriptRoot -ChildPath "lib")
+        ConfDirectory       = (Join-Path -Path $PSScriptRoot -ChildPath "conf")
+        DefaultProperties   = "default.ini"
+        CustomProperties    = "custom.ini"
+    }
 
     # ----------------------------------------------------------------------------
     # * Modules
@@ -162,7 +168,7 @@ Begin {
     foreach ($Module in $Modules.GetEnumerator()) {
         try {
             # Check if package is available locally
-            Import-Module -Name (Join-Path -Path $LibDirectory -ChildPath $Module.Name) -MinimumVersion $Module.Value -ErrorAction "Stop" -Force
+            Import-Module -Name (Join-Path -Path $ScriptProperties.LibDirectory -ChildPath $Module.Name) -MinimumVersion $Module.Value -ErrorAction "Stop" -Force
             $ModuleVersion = (Get-Module -Name $Module.Name).Version
             Write-Log -Type "CHECK" -Object "The $($Module.Name) module (v$ModuleVersion) was successfully loaded from the library directory."
         } catch {
@@ -172,7 +178,7 @@ Begin {
                 $ModuleVersion = (Get-Module -Name $Module.Name).Version
                 Write-Log -Type "CHECK" -Object "The $($Module.Name) module (v$ModuleVersion) was successfully loaded."
             } catch {
-                Throw "The $($Module.Name) module (v$($Module.Value)) could not be loaded. Make sure it has been installed on the machine or packaged in the ""$LibDirectory"" directory"
+                Throw "The $($Module.Name) module (v$($Module.Value)) could not be loaded. Make sure it has been installed on the machine or packaged in the ""$($ScriptProperties.LibDirectory)"" directory"
             }
         }
     }
@@ -181,7 +187,7 @@ Begin {
     # * Script configuration
     # ----------------------------------------------------------------------------
     # General settings
-    $Properties = Get-Properties -File $DefaultProperties -Directory $ConfDirectory -Custom $CustomProperties
+    $Properties = Get-Properties -File $ScriptProperties.DefaultProperties -Directory $ScriptProperties.ConfDirectory -Custom $ScriptProperties.CustomProperties
     # Resolve relative paths
     Write-Log -Type "DEBUG" -Message "Script structure check"
     $Properties = Get-Path -PathToResolve $Properties.RelativePaths -Hashtable $Properties -Root $PSScriptRoot
@@ -252,9 +258,10 @@ Begin {
         "PredictiveTools"
         "IntelligenceSuite"
         "DataPackages"
-      )
+    )
     $InstallationProperties = Get-Properties -File $Properties.InstallationOptions -Directory $Properties.ConfDirectory -ValidateSet $ValidateSet
     $InstallationProperties.Add("Product", $Product)
+    $Properties.Add("Product", $Product)
     # Optional parameters
     if ($PSBoundParameters.ContainsKey("Version")) {
         $Properties.Version = $Version
@@ -273,44 +280,49 @@ Begin {
 Process {
     # Check operation to perform
     switch ($Action) {
-        "activate"      { $Process = Invoke-ActivateAlteryx    -Properties $Properties -Unattended:$Unattended                                                  }
-        "backup"        { $Process = Invoke-BackupAlteryx      -Properties $Properties -Unattended:$Unattended                                                  }
-        "configure"     { $Process = Set-Configuration         -Properties $Properties -Unattended:$Unattended                                                  }
-        "deactivate"    { $Process = Invoke-DeactivateAlteryx  -Properties $Properties -Unattended:$Unattended                                                  }
-        "download"      { $Process = Invoke-DownloadAlteryx    -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
-        "install"       { $Process = Install-Alteryx           -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
-        "repair"        { $Process = Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                  }
-        "patch"         { $Process = Invoke-PatchAlteryx       -Properties $Properties -Unattended:$Unattended                                                  }
-        "repair"        { $Process = Repair-Alteryx            -Properties $Properties -Unattended:$Unattended                                                  }
-        "restart"       { $Process = Invoke-RestartAlteryx     -Properties $Properties -Unattended:$Unattended                                                  }
-        "restore"       { $Process = Invoke-RestoreAlteryx     -Properties $Properties -Unattended:$Unattended                                                  }
-        "show"          { $Process = Show-Configuration        -Properties $Properties -InstallationProperties $InstallationProperties                          }
-        "start"         { $Process = Invoke-StartAlteryx       -Properties $Properties -Unattended:$Unattended                                                  }
-        "stop"          { $Process = Invoke-StopAlteryx        -Properties $Properties -Unattended:$Unattended                                                  }
-        "uninstall"     { $Process = Uninstall-Alteryx         -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
-        "upgrade"       { $Process = Update-Alteryx            -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended  }
+        "activate"      { $Process = Invoke-ActivateAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
+        "backup"        { $Process = Invoke-BackupAlteryx       -Properties $Properties -Unattended:$Unattended                                                 }
+        "configure"     { $Process = Set-Configuration          -Properties $Properties -ScriptProperties $ScriptProperties                                     }
+        "deactivate"    { $Process = Invoke-DeactivateAlteryx   -Properties $Properties -Unattended:$Unattended                                                 }
+        "download"      { $Process = Invoke-DownloadAlteryx     -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
+        "install"       { $Process = Install-Alteryx            -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
+        "repair"        { $Process = Repair-Alteryx             -Properties $Properties -Unattended:$Unattended                                                 }
+        "open"          { $Process = Open-Alteryx               -Properties $Properties -Unattended:$Unattended                                                 }
+        "patch"         { $Process = Invoke-PatchAlteryx        -Properties $Properties -Unattended:$Unattended                                                 }
+        "ping"          { $Process = Invoke-PingAlteryx         -Properties $Properties -Unattended:$Unattended                                                 }
+        "repair"        { $Process = Repair-Alteryx             -Properties $Properties -Unattended:$Unattended                                                 }
+        "restart"       { $Process = Invoke-RestartAlteryx      -Properties $Properties -Unattended:$Unattended                                                 }
+        "restore"       { $Process = Invoke-RestoreAlteryx      -Properties $Properties -Unattended:$Unattended                                                 }
+        "show"          { $Process = Show-Configuration         -Properties $Properties -InstallationProperties $InstallationProperties                         }
+        "start"         { $Process = Invoke-StartAlteryx        -Properties $Properties -Unattended:$Unattended                                                 }
+        "stop"          { $Process = Invoke-StopAlteryx         -Properties $Properties -Unattended:$Unattended                                                 }
+        "uninstall"     { $Process = Uninstall-Alteryx          -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
+        "upgrade"       { $Process = Update-Alteryx             -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
         default         { Write-Log -Type "ERROR" -Message """$Action"" operation is not supported" -ExitCode 1                                                 }
     }
 }
 
 End {
     # Check outcome and gracefully end script
-    Write-Log -Type "DEBUG" -Message ($Process | Format-Table)
-    if ($Process.Success -And ($Process.Status -eq "Completed")) {
-        Write-Log -Type "CHECK" -Message "Alteryx $Action process completed successfully" -ExitCode $Process.ExitCode
-    } else {
-        if ($Process.ErrorCount -gt 0) {
-            if ($Process.ErrorCount -gt 1) {
-                $Errors = "with $($Process.ErrorCount) errors"
-            } else {
-                $Errors = "with $($Process.ErrorCount) error"
-            }
+    $Process = $Process[0]
+    if ($Process.ErrorCount -gt 0) {
+        if ($Process.ErrorCount -gt 1) {
+            $Errors = "with $($Process.ErrorCount) errors"
         } else {
-            $Errors = ""
+            $Errors = "with $($Process.ErrorCount) error"
         }
+    } else {
+        $Errors = ""
+    }
+    if ($Process.Status -eq "Completed") {
+        if ($Process.Success) {
+            Write-Log -Type "CHECK" -Message "Alteryx $Action process completed successfully" -ExitCode $Process.ExitCode
+        } else {
+            Write-Log -Type "WARN" -Message "Alteryx $Action process completed $Errors" -ExitCode $Process.ExitCode
+        }
+    } else {
         switch ($Process.Status) {
             "Cancelled" { $Outcome = "was cancelled"    }
-            "Completed" { $Outcome = "completed"        }
             "Failed"    { $Outcome = "failed"           }
             "Stopped"   { $Outcome = "was stopped"      }
             default     { $Outcome = "failed"           }

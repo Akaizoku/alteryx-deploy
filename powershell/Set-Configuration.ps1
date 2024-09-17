@@ -1,18 +1,20 @@
 function Set-Configuration {
     <#
         .SYNOPSIS
-        Configure Alteryx Server
+        Configure Alteryx deploy utility
 
         .DESCRIPTION
-        Set Alteryx Server configuration
+        Configuration wizard for the required parameters of the alteryx-deploy utility
 
         .NOTES
         File name:      Set-Configuration.ps1
         Author:         Florian Carrier
         Creation date:  2022-05-03
-        Last modified:  2022-05-03
+        Last modified:  2024-09-17
     #>
-    [CmdletBinding ()]
+    [CmdletBinding (
+        SupportsShouldProcess = $true
+    )]
     Param (
         [Parameter (
             Position    = 1,
@@ -25,16 +27,28 @@ function Set-Configuration {
         [Parameter (
             Position    = 2,
             Mandatory   = $true,
-            HelpMessage = "Installation properties"
+            HelpMessage = "Default script properties"
         )]
         [ValidateNotNullOrEmpty ()]
         [System.Collections.Specialized.OrderedDictionary]
-        $InstallationProperties
+        $ScriptProperties
     )
     Begin {
         # Get global preference vrariables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
-        
+        # Log function call
+        Write-Log -Type "DEBUG" -Message $MyInvocation.MyCommand.Name
+        # Process status
+        $ConfigureProcess = New-ProcessObject -Name $MyInvocation.MyCommand.Name
+        # Parameters
+        $ConfDirectory  = $ScriptProperties.ConfDirectory
+        $DefaultPath    = Join-Path -Path $ConfDirectory -ChildPath $ScriptProperties.DefaultProperties
+        $CustomPath     = Join-Path -Path $ConfDirectory -ChildPath $ScriptProperties.CustomProperties
+        $CustomHeader   = 
+"# ------------------------------------------------------------------------------
+# Add your custom configuration here
+# e.g. TempDirectory = D:\Temp
+# ------------------------------------------------------------------------------"
     }
     Process {
         $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -Status "Running"

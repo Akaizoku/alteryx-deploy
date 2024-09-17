@@ -10,7 +10,7 @@ function Invoke-DownloadAlteryx {
         File name:      Invoke-DownloadAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2024-09-04
-        Last modified:  2024-09-06
+        Last modified:  2024-09-16
     #>
     [CmdletBinding ()]
     Param (
@@ -48,7 +48,7 @@ function Invoke-DownloadAlteryx {
             "Designer"  = "Alteryx Designer"
             "Server"    = "Alteryx Server"
         }
-        $ProductID = $Products.$($InstallationProperties.Product)
+        $ProductID = $Products.$($Properties.Product)
         # License API refresh token
         $RefreshToken = Get-Content -Path $Properties.LicenseAPIFile -Raw
         # Placeholder
@@ -112,6 +112,7 @@ function Invoke-DownloadAlteryx {
             Write-Log -Type "WARN" -Message "Skipping download process"
             $Process = Update-ProcessObject -ProcessObject $Process -Status "Cancelled" -Success $true -ExitCode 0 -ErrorCount 0
         }
+        # TODO download add-ons
     }
     End {
         return $Process
