@@ -16,7 +16,7 @@ function Invoke-DeactivateAlteryx {
         File name:      Invoke-DeactivateAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-11-20
-        Last modified:  2024-09-12
+        Last modified:  2024-09-18
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -99,13 +99,14 @@ function Invoke-DeactivateAlteryx {
                                 return $DeactivateProcess
                             }
                             # Read keys from license file
-                            if (Test-Object -Path $Properties.LicenseFile -NotFound) {
+                            $LicenseFilePath = Join-Path -Path $Properties.ResDirectory -ChildPath $Properties.LicenseFile
+                            if (Test-Object -Path $LicenseFilePath -NotFound) {
                                 Write-Log -Type "ERROR" -Message "License file path not found $($Properties.LicenseFile)"
                                 Write-Log -Type "WARN"  -Message "Alteryx product deactivation failed"
                                 $DeactivateProcess = Update-ProcessObject -ProcessObject $DeactivateProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
                                 return $DeactivateProcess
                             } else {
-                                $Properties.LicenseKey = @(Get-Content -Path $Properties.LicenseFile)
+                                $Properties.LicenseKey = @(Get-Content -Path $LicenseFilePath)
                             }
                         }
                         Write-Log -Type "DEBUG" -Message $Properties.LicenseKey

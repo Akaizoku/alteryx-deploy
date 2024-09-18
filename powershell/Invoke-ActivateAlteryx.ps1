@@ -16,7 +16,7 @@ function Invoke-ActivateAlteryx {
         File name:      Invoke-ActivateAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2024-09-12
+        Last modified:  2024-09-18
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -68,17 +68,18 @@ function Invoke-ActivateAlteryx {
                     if ($null -eq $Properties.LicenseFile -Or $Properties.LicenseFile -eq "") {
                         Write-Log -Type "ERROR" -Message "No license key or file have been specified"
                         Write-Log -Type "WARN"  -Message "Alteryx product activation failed"
-                        $ActivateProcess = Update-ProcessObject -ProcessObject $ActivateProcess -Status "Failed" -ErrorCode 1 -ExitCode 1
+                        $ActivateProcess = Update-ProcessObject -ProcessObject $ActivateProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
                         return $ActivateProcess
                     }
                     # Read keys from license file
-                    if (Test-Object -Path $Properties.LicenseFile -NotFound) {
-                        Write-Log -Type "ERROR" -Message "License file path not found $($Properties.LicenseFile)"
+                    $LicenseFilePath = Join-Path -Path $Properties.ResDirectory -ChildPath $Properties.LicenseFile
+                    if (Test-Object -Path $LicenseFilePath -NotFound) {
+                        Write-Log -Type "ERROR" -Message "License file does not exist $($Properties.LicenseFile)"
                         Write-Log -Type "WARN"  -Message "Alteryx product activation failed"
-                        $ActivateProcess = Update-ProcessObject -ProcessObject $ActivateProcess -Status "Failed" -ErrorCode 1 -ExitCode 1
+                        $ActivateProcess = Update-ProcessObject -ProcessObject $ActivateProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
                         return $ActivateProcess
                     }
-                    $Properties.LicenseKey = @(Get-Content -Path $Properties.LicenseFile)
+                    $Properties.LicenseKey = @(Get-Content -Path $LicenseFilePath)
                 }
                 Write-Log -Type "DEBUG" -Message $Properties.LicenseKey
                 # Count keys
