@@ -65,7 +65,7 @@ function Uninstall-Alteryx {
         $ISOTimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
         $Tags = [Ordered]@{"Version" = $Properties.Version}
         # Filenames
-        if ($InstallationProperties.Product -eq "Designer") {
+        if ($Properties.Product -eq "Designer") {
             $ServerInstaller = "AlteryxInstallx64_<Version>.exe"
         } else {
             $ServerInstaller = "AlteryxServerInstallx64_<Version>.exe"
@@ -74,6 +74,31 @@ function Uninstall-Alteryx {
     Process {
         $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Running"
         Write-Log -Type "INFO" -Message "Uninstallation of Alteryx Server $($Properties.Version)"
+        if ($Unattended -eq $false) {
+            # Ask for confirmation to uninstall
+            $ConfirmUninstall = Confirm-Prompt -Prompt "Are you sure that you want to uninstall $($Properties.Product)?"
+            if ($ConfirmUninstall -eq $false) {
+                Write-Log -Type "WARN" -Message "Cancelling uninstallation"
+                $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Cancelled"
+                return $Uninstallprocess
+            } else {
+                # Suggest backup
+                $Backup = Confirm-Prompt -Prompt "Do you want to take a back-up of the database?"
+                if ($Backup) {
+                    $BackupProcess = Invoke-BackupAlteryx -Properties $BackUpProperties -Unattended:$Unattended
+                    if ($BackupProcess.Success -eq $false) {
+                        if (Confirm-Prompt -Prompt "Do you still want to proceed with the uninstallation?") {
+                            $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -ErrorCount 1
+                        } else {
+                            $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Cancelled" -ErrorCount 1
+                            return $Uninstallprocess
+                        }
+                    }
+                } else {
+                    Write-Log -Type "WARN" -Message "Skipping database back-up"
+                }
+            }
+        }
         # ------------------------------------------------------------------------------
         # * Deactivate license keys
         # ------------------------------------------------------------------------------
