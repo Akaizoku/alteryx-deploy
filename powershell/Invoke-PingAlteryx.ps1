@@ -10,7 +10,7 @@ function Invoke-PingAlteryx {
         File name:      Invoke-PingAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2024-09-16
-        Last modified:  2024-09-16
+        Last modified:  2024-09-18
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -45,7 +45,8 @@ function Invoke-PingAlteryx {
         $PingProcess = Update-ProcessObject -ProcessObject $PingProcess -Status "Running"
         Write-Log -Type "NOTICE" -Message "Pinging Alteryx Server"
         # ----------------------------------------------------------------------------
-        # Check Alteryx service status
+        # * Alteryx service
+        # ----------------------------------------------------------------------------
         Write-Log -Type "INFO" -Message "Check Alteryx Service status"
         if ($PSCmdlet.ShouldProcess("Alteryx Service", "Check")) {
             $AlteryxService = Get-Service -Name $ServiceName
@@ -65,12 +66,10 @@ function Invoke-PingAlteryx {
                     return $PingProcess
                 }
             }
-        } else {
-            # WhatIf
-            Write-Log -Type "CHECK" -Message "$ServiceName is running"
         }
         # ----------------------------------------------------------------------------
-        # Check Gallery
+        # * Gallery
+        # ----------------------------------------------------------------------------
         Write-Log -Type "INFO" -Message "Check Alteryx Gallery status"
         if ($PSCmdlet.ShouldProcess("Alteryx Gallery", "Ping")) {
             if ($Properties.EnableSSL -eq $true) {
@@ -83,12 +82,18 @@ function Invoke-PingAlteryx {
                 Write-Log -Type "CHECK" -Message "Alteryx Gallery is accessible"
                 $PingProcess = Update-ProcessObject -ProcessObject $PingProcess -Status "Completed" -Success $true
             } else {
-                Write-Log -Type "ERROR" -Message "Alteryx Gallery is not accessible"
-                $PingProcess = Update-ProcessObject -ProcessObject $PingProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                # Try localhost
+                if (Test-HTTPStatus -URI "$($Protocol)://localhost/gallery") {
+                    Write-Log -Type "CHECK" -Message "Alteryx Gallery is accessible"
+                    Write-Log -Type "WARN"  -Message "Consider changing the base address not to use localhost"
+                    $PingProcess = Update-ProcessObject -ProcessObject $PingProcess -Status "Completed" -Success $true
+                } else {
+                    Write-Log -Type "ERROR" -Message "Alteryx Gallery is not accessible"
+                    $PingProcess = Update-ProcessObject -ProcessObject $PingProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                }
             }
         } else {
             # WhatIf
-            Write-Log -Type "CHECK" -Message "Alteryx Gallery is accessible"
             $PingProcess = Update-ProcessObject -ProcessObject $PingProcess -Status "Completed" -Success $true
         }
     }
