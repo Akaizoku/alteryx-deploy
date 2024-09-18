@@ -201,9 +201,14 @@ function Install-Alteryx {
             $AISPath = Join-Path -Path $Properties.SrcDirectory -ChildPath $AISFileName
             if (Test-Object -Path $AISPath -NotFound) {
                 # Workaround for files not following naming convention due to duplicate pipeline runs
-                $Workaround  = [Ordered]@{"Version" = [System.String]::Concat($Properties.Version, "_1")}
-                $AISFileName = Set-Tags -String $AISInstaller -Tags (Resolve-Tags -Tags $Workaround -Prefix "<" -Suffix ">")
-                $AISPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $AISFileName 
+                $Workaround     = [Ordered]@{"Version" = [System.String]::Concat($Properties.Version, "_1")}
+                $WorkaroundPath = Set-Tags -String $AISInstaller -Tags (Resolve-Tags -Tags $Workaround -Prefix "<" -Suffix ">")
+                if (Test-Path -Path $WorkaroundPath) {
+                    $AISFileName    = Set-Tags -String $AISInstaller -Tags (Resolve-Tags -Tags $Workaround -Prefix "<" -Suffix ">")
+                    $AISPath        = Join-Path -Path $Properties.SrcDirectory -ChildPath $AISFileName
+                } else {
+                    # TODO Check latest file that matches the major version
+                }
             }
             Write-Log -Type "INFO" -Message "Installing Intelligence Suite"
             if ($PSCmdlet.ShouldProcess($AISPath, "Install")) {
