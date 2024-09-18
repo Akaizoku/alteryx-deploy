@@ -68,7 +68,7 @@ function Invoke-BackupAlteryx {
         $BackupProcess = Update-ProcessObject -ProcessObject $BackupProcess -Status "Running"
         Write-Log -Type "NOTICE" -Message "Start $BackupType backup of Alteryx Server"
         # ----------------------------------------------------------------------------
-        # Check Alteryx service status
+        # * Check Alteryx service status
         Write-Log -Type "INFO" -Message "Check Alteryx Service status"
         if ($PSCmdlet.ShouldProcess("Alteryx Service", "Stop")) {
             $Service = "AlteryxService"
@@ -90,7 +90,7 @@ function Invoke-BackupAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
-        # Create database dump
+        # * Create database dump
         if ($Backup.Database -eq $true) {
             Write-Log -Type "INFO" -Message "Create MongoDB database backup"
             if ($PSCmdlet.ShouldProcess("MongoDB", "Back-up")) {
@@ -113,7 +113,7 @@ function Invoke-BackupAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
-        # Backup configuration files
+        # * Backup configuration files
         if ($Backup.Configuration -eq $true) {
             Write-Log -Type "INFO" -Message "Backup configuration files"
             if ($PSCmdlet.ShouldProcess("Configuration files", "Back-up")) {
@@ -141,7 +141,7 @@ function Invoke-BackupAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
-        # Backup tokens
+        # * Backup tokens
         if ($Backup.Token -eq $true) {
             Write-Log -Type "INFO" -Message "Backup controller token"
             if ($PSCmdlet.ShouldProcess("Controller token", "Back-up")) {
@@ -153,7 +153,7 @@ function Invoke-BackupAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
-        # Compress backup
+        # * Compress backup
         Write-Log -Type "INFO" -Message "Compress backup files"
         if ($PSCmdlet.ShouldProcess("Compress", "Back-up")) {
             if (Test-Object -Path $Properties.BackupDirectory -NotFound) {
@@ -173,7 +173,7 @@ function Invoke-BackupAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
-        # Restart service if it was running before
+        # * Restart service if it was running before
         if ($ServiceStatus -eq "Running") {
             $StartProcess = Invoke-StartAlteryx -Properties $Properties -Unattended:$Unattended
             if ($StartProcess.Success -eq $false) {
