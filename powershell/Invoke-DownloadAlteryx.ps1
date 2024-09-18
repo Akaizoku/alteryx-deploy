@@ -10,9 +10,11 @@ function Invoke-DownloadAlteryx {
         File name:      Invoke-DownloadAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2024-09-04
-        Last modified:  2024-09-17
+        Last modified:  2024-09-18
     #>
-    [CmdletBinding ()]
+    [CmdletBinding (
+        SupportsShouldProcess = $true
+    )]
     Param (
         [Parameter (
             Position    = 1,
@@ -42,7 +44,7 @@ function Invoke-DownloadAlteryx {
         # Log function call
         Write-Log -Type "DEBUG" -Message $MyInvocation.MyCommand.Name
         # Process status
-        $Process = New-ProcessObject -Name $MyInvocation.MyCommand.Name
+        $DownloadProcess = New-ProcessObject -Name $MyInvocation.MyCommand.Name
         # Product IDs
         $Products = [Ordered]@{
             "Designer"  = "Alteryx Designer"
@@ -58,70 +60,161 @@ function Invoke-DownloadAlteryx {
         $Skip = $false
     }
     Process {
-        $Process = Update-ProcessObject -ProcessObject $Process -Status "Running"
+        $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Running"
+        # ------------------------------------------------------------------------------
+        # * Fetch latest version
+        # ------------------------------------------------------------------------------
         # Get license API access token
+        if ($PSCmdlet.ShouldProcess("License Portal access token", "Refresh")) {
         $AccessToken    = Update-AlteryxLicenseToken -Token $RefreshToken -Type "Access"
-        Write-Log -Type "DEBUG" -Message $AccessToken
-        # Check current and target versions
-        if (Test-Path -Path $RegistryKey) {
-            $CurrentVersion = Get-AlteryxVersion
-        } else {
-            $CurrentVersion = "0.0"
+            Write-Log -Type "DEBUG" -Message $AccessToken
         }
-        $MajorVersion   = [System.String]::Concat([System.Version]::Parse($CurrentVersion).Major    , ".", [System.Version]::Parse($CurrentVersion).Minor)
-        $TargetVersion  = [System.String]::Concat([System.Version]::Parse($Properties.Version).Major, ".", [System.Version]::Parse($Properties.Version).Minor)
-        # Check latest version
-        Write-Log -Type "INFO" -Message "Retrieve latest release for $ProductID version $TargetVersion"
-        $Release = Get-AlteryxLatestRelease -AccountID $Properties.LicenseAccountID -Token $AccessToken -ProductID $ProductID -Version $TargetVersion
-        # Compare versions
-        if (Compare-Version -Version $Release.Version -Operator "lt" -Reference $CurrentVersion) {
-            Write-Log -Type "WARN" -Message "The specified version ($($Release.Version)) is lower than the current one ($CurrentVersion)"
-            if (($Unattended -eq $false) -And (-Not (Confirm-Prompt -Prompt "Do you still want to download $ProductID version $($Release.Version)?"))) {
-                $Skip = $true
+        # Check current and target versions
+        if ($PSCmdlet.ShouldProcess("Latest release version", "Fetch")) {
+            if (Test-Path -Path $RegistryKey) {
+                $CurrentVersion = Get-AlteryxVersion
+            } else {
+                $CurrentVersion = "0.0"
             }
-        } elseif (Compare-Version -Version $Release.Version -Operator "eq" -Reference $CurrentVersion) {
-            Write-Log -Type "WARN" -Message "The version installed ($CurrentVersion) is the latest version available for $ProductID"
-            if (($Unattended -eq $false) -And (-Not (Confirm-Prompt -Prompt "Do you still want to download $ProductID version $($Release.Version)?"))) {
-                $Skip = $true
-            }
-        } else {
-            Write-Log -Type "INFO" -Message "$ProductID version $($Release.Version) is available"
-            if (-Not $Unattended) {
-                $Continue = Confirm-Prompt -Prompt "Do you want to download it?"
-                if (-Not $Continue) {
+            $MajorVersion   = [System.String]::Concat([System.Version]::Parse($CurrentVersion).Major    , ".", [System.Version]::Parse($CurrentVersion).Minor)
+            $TargetVersion  = [System.String]::Concat([System.Version]::Parse($Properties.Version).Major, ".", [System.Version]::Parse($Properties.Version).Minor)
+            # Check latest version
+            Write-Log -Type "INFO" -Message "Retrieve latest release for $ProductID version $TargetVersion"
+            $Release = Get-AlteryxLatestRelease -AccountID $Properties.LicenseAccountID -Token $AccessToken -ProductID $ProductID -Version $TargetVersion
+            # Compare versions
+            if (Compare-Version -Version $Release.Version -Operator "lt" -Reference $CurrentVersion) {
+                Write-Log -Type "WARN" -Message "The specified version ($($Release.Version)) is lower than the current one ($CurrentVersion)"
+                if (($Unattended -eq $false) -And (-Not (Confirm-Prompt -Prompt "Do you still want to download $ProductID version $($Release.Version)?"))) {
                     $Skip = $true
+                }
+            } elseif (Compare-Version -Version $Release.Version -Operator "eq" -Reference $CurrentVersion) {
+                Write-Log -Type "WARN" -Message "The version installed ($CurrentVersion) is the latest version available for $ProductID"
+                if (($Unattended -eq $false) -And (-Not (Confirm-Prompt -Prompt "Do you still want to download $ProductID version $($Release.Version)?"))) {
+                    $Skip = $true
+                }
+            } else {
+                Write-Log -Type "INFO" -Message "$ProductID version $($Release.Version) is available"
+                if (-Not $Unattended) {
+                    $Continue = Confirm-Prompt -Prompt "Do you want to download it?"
+                    if (-Not $Continue) {
+                        $Skip = $true
+                    }
                 }
             }
         }
+        # ------------------------------------------------------------------------------
+        # * Download
+        # ------------------------------------------------------------------------------
         # Check if download should proceed
         if ($Skip -eq $false) {
-            # Check if 
-            if (Compare-Version -Version $TargetVersion -Operator "ne" -Reference $MajorVersion) {
-                # If major upgrade, download installer
-                Write-Log -Type "INFO" -Message "Downloading $($Release.Product) version $($Release.Version)"
-            } else {
-                # If minor or patch upgrade, download patch
-                Write-Log -Type "INFO" -Message "Downloading $($Release.Product) patch version $($Release.Version)"
-                $Release = Get-AlteryxLatestRelease -AccountID $Properties.LicenseAccountID -Token $AccessToken -ProductID $ProductID -Version $TargetVersion -Patch
+            # TODO improve and loop through installation properties
+            if ($PSCmdlet.ShouldProcess("Patch installer", "Check")) {
+                # Check upgrade step
+                if (Compare-Version -Version $TargetVersion -Operator "ne" -Reference $MajorVersion) {
+                    # If major upgrade, download installer
+                    Write-Log -Type "INFO" -Message "Downloading $($Release.Product) version $($Release.Version)"
+                } else {
+                    # If minor or patch upgrade, download patch
+                    Write-Log -Type "INFO" -Message "Downloading $($Release.Product) patch version $($Release.Version)"
+                    $Release = Get-AlteryxLatestRelease -AccountID $Properties.LicenseAccountID -Token $AccessToken -ProductID $ProductID -Version $TargetVersion -Patch
+                }
             }
-            $DownloadPath = Join-Path -Path $Properties.SrcDirectory -ChildPath $Release.FileName
-            Invoke-WebRequest -Uri $Release.URL -OutFile $DownloadPath
-            # Check downloaded file
-            Write-Log -Type "DEBUG" -Message $DownloadPath
-            if (Test-Path -Path $DownloadPath) {
-                Write-Log -Type "CHECK" -Message "Download completed successfully"
-                $Process = Update-ProcessObject -ProcessObject $Process -Status "Completed" -Success $true -ExitCode 0 -ErrorCount 0
-            } else {
-                Write-Log -Type "ERROR" -Message "Download failed"
-                $Process = Update-ProcessObject -ProcessObject $Process -Status "Failed" -Success $false -ExitCode 1 -ErrorCount 1
+            # ------------------------------------------------------------------------------
+            # * Server/Designer
+            # ------------------------------------------------------------------------------
+            if ($PSCmdlet.ShouldProcess($ProductID, "Download")) {
+                $DownloadEXE = $true
+                $DownloadPath = Join-Path -Path $Properties.SrcDirectory -ChildPath $Release.FileName
+                # Check if file already exists
+                if (Test-Path -Path $DownloadPath) {
+                    Write-Log -Type "WARN" -Message "$ProductID installation file already exist in source directory"
+                    Write-Log -Type "DEBUG" -Message $DownloadPath
+                    if ($Unattended -eq $false) {
+                        $DownloadEXE = Confirm-Prompt "Do you want to redownload and overwrite the existing file?"
+                    } else {
+                        $DownloadEXE = $false
+                    }
+                }
+                if ($DownloadEXE -eq $true) {
+                    Invoke-WebRequest -Uri $Release.URL -OutFile $DownloadPath
+                    # Check downloaded file
+                    Write-Log -Type "DEBUG" -Message $DownloadPath
+                    if (Test-Path -Path $DownloadPath) {
+                        Write-Log -Type "CHECK" -Message "$ProductID download completed successfully"
+                    } else {
+                        Write-Log -Type "ERROR" -Message "Download failed"
+                        $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                    }
+                } else {
+                    Write-Log -Type "WARN" -Message "Skipping download of $ProductID version $($Release.Version)"
+                }
+            }
+            # ------------------------------------------------------------------------------
+            # * Predictive Tools
+            # ------------------------------------------------------------------------------
+            # Check if download should proceed
+            if ($InstallationProperties.PredictiveTools -eq $true) {
+                if ($PSCmdlet.ShouldProcess("Predictive Tools", "Download")) {
+                    $DownloadR = $true
+                    if ($Properties.Product -eq "Server") {
+                        Write-Log -Type "INFO" -Message "Predictive Tools installer is packaged within the main installation file"
+                        if ($Unattended -eq $false) {
+                            $DownloadR = Confirm-Prompt -Prompt "Do you still want to download Predictive Tools separately?"
+                        } else {
+                            $DownloadR = $false
+                        }
+                    }
+                    if ($DownloadR = $true) {
+                        # TODO download RInstaller
+                    }
+                }
+            }
+            # ------------------------------------------------------------------------------
+            # * Intelligence Suite
+            # ------------------------------------------------------------------------------
+            if ($InstallationProperties.IntelligenceSuite -eq $true) {
+                if ($PSCmdlet.ShouldProcess("Intelligence Suite", "Download")) {
+                    $DownloadIS = $true
+                    if ($Unattended -eq $false) {
+                        $DownloadIS = Confirm-Prompt -Prompt "Do you want to download Intelligence Suite?"
+                    }
+                    if ($DownloadIS -eq $true) {
+                        # TODO download IS
+                    }
+                }
+            }
+            # ------------------------------------------------------------------------------
+            # * Data packages
+            # ------------------------------------------------------------------------------
+            if ($InstallationProperties.DataPackages -eq $true) {
+                if ($PSCmdlet.ShouldProcess("Data Packages", "Download")) {
+                    # TODO download data packages
+                }
             }
         } else {
             Write-Log -Type "WARN" -Message "Skipping download process"
-            $Process = Update-ProcessObject -ProcessObject $Process -Status "Cancelled" -Success $true -ExitCode 0 -ErrorCount 0
+            $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Cancelled" -Success $true -ExitCode 0 -ErrorCount 0
         }
-        # TODO download add-ons
+        # ------------------------------------------------------------------------------
+        # * Check
+        # ------------------------------------------------------------------------------
+        if ($DownloadProcess.ErrorCount -eq 0) {
+            Write-Log -Type "CHECK" -Message "Download of Alteryx $($InstallationProperties.Product) $Version successfull"
+            $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Completed" -Success $true
+        } elseif ($DownloadProcess.ErrorCount -eq 4) {
+                Write-Log -Type "ERROR" -Message "Download failed"
+                $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Failed" -ExitCode 1
+        } else {
+            if ($DownloadProcess.ErrorCount -eq 1) {
+                $ErrorCount = "one error"
+            } else {
+                $ErrorCount = "$($DownloadProcess.ErrorCount) errors"
+            }
+            Write-Log -Type "WARN" -Message "Download completed with $ErrorCount"
+            $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Completed"
+        }
     }
     End {
-        return $Process
+        return $DownloadProcess
     }
 }
