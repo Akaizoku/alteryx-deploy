@@ -16,13 +16,13 @@ function Uninstall-Alteryx {
         File name:      Uninstall-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2023-01-17
+        Last modified:  2024-09-18
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
 
         .LINK
-        https://help.alteryx.com/current/product-activation-and-licensing/use-command-line-options
+        https://help.alteryx.com/current/en/license-and-activate/administer/use-command-line-options.html
 
         .LINK
         https://community.alteryx.com/t5/Alteryx-Designer-Knowledge-Base/Complete-Uninstall-of-Alteryx-Designer/ta-p/402897
@@ -58,7 +58,9 @@ function Uninstall-Alteryx {
         # Get global preference variables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # Log function call
-        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
+        Write-Log -Type "DEBUG" -Message $MyInvocation.MyCommand.Name
+        # Process status
+        $Uninstallprocess = New-ProcessObject -Name $MyInvocation.MyCommand.Name
         # Variables
         $ISOTimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
         $Tags = [Ordered]@{"Version" = $Properties.Version}
@@ -70,13 +72,19 @@ function Uninstall-Alteryx {
         }
     }
     Process {
+        $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Running"
         Write-Log -Type "INFO" -Message "Uninstallation of Alteryx Server $($Properties.Version)"
         # ------------------------------------------------------------------------------
-        # Alteryx Server
+        # * Deactivate license keys
+        # ------------------------------------------------------------------------------
+        $DeactivateProcess = Invoke-DeactivateAlteryx -Properties $Properties -All -Unattended:$Unattended
+        if ($DeactivateProcess.Success -eq $false) {
+            $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -ErrorCount 1
+        }
+        # ------------------------------------------------------------------------------
+        # * Uninstall Alteryx Server
         # ------------------------------------------------------------------------------
         # TODO check if Alteryx is installed
-        # Deactivate license keys
-        Invoke-DeactivateAlteryx -Properties $Properties -All -Unattended:$Unattended
         # Update file version number
         $ServerFileName = Set-Tags -String $ServerInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
         $ServerPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $ServerFileName
@@ -94,15 +102,40 @@ function Uninstall-Alteryx {
                     Write-Log -Type "CHECK" -Message "Alteryx Server uninstalled successfully"
                 } else {
                     Write-Log -Type "ERROR" -Message "An error occured during the uninstallation" -ExitCode $ServerUninstall.ExitCode
+                    $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                    return $Uninstallprocess
+                    
                 }
             } else {
                 Write-Log -Type "ERROR" -Message "Path not found $ServerPath"
-                Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) executable file could not be located" -ExitCode 1
+                Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) executable file could not be located"
+                $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                return $Uninstallprocess
             }
         }
         # TODO remove leftover files
         # TODO remove registry keys
+        # ------------------------------------------------------------------------------
+        # * Uninstall add-ons
+        # ------------------------------------------------------------------------------
         # TODO enable uninstall of standalone components
-        Write-Log -Type "CHECK" -Message "Uninstallation of Alteryx $($InstallationProperties.Product) $Version successfull"
+        # ------------------------------------------------------------------------------
+        # * Check
+        # ------------------------------------------------------------------------------
+        if ($Uninstallprocess.ErrorCount -eq 0) {
+            Write-Log -Type "CHECK" -Message "Uninstallation of Alteryx $($InstallationProperties.Product) $Version successfull"
+            $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Completed" -Success $true
+        } else {
+            if ($Uninstallprocess.ErrorCount -eq 1) {
+                $ErrorCount = "one error"
+            } else {
+                $ErrorCount = "$($Uninstallprocess.ErrorCount) errors"
+            }
+            Write-Log -Type "WARN" -Message "Alteryx $($InstallationProperties.Product) $($Properties.Version) was uninstalled with $ErrorCount"
+            $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Completed"
+        }
+    }
+    End {
+        return $Uninstallprocess
     }
 }

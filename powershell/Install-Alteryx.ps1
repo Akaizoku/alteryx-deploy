@@ -16,13 +16,13 @@ function Install-Alteryx {
         File name:      Install-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2023-05-23
+        Last modified:  2024-09-18
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
 
         .LINK
-        https://help.alteryx.com/current/product-activation-and-licensing/use-command-line-options
+        https://help.alteryx.com/current/en/license-and-activate/administer/use-command-line-options.html
 
     #>
     [CmdletBinding (
@@ -56,6 +56,8 @@ function Install-Alteryx {
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # Log function call
         Write-Log -Type "DEBUG" -Message $MyInvocation.MyCommand.Name
+        # Process status
+        $Installprocess = New-ProcessObject -Name $MyInvocation.MyCommand.Name
         # Variables
         $ISOTimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
         $Tags = [Ordered]@{"Version" = $Properties.Version}
@@ -65,7 +67,8 @@ function Install-Alteryx {
         } else {
             $ServerInstaller = "AlteryxServerInstallx64_<Version>.exe"
         }
-        # $RFileName AISFileName
+        # Add-ons paths
+        $RDirectory     = Join-Path -Path $Properties.InstallationPath -ChildPath "RInstaller"
         $RInstaller     = "RInstaller_<Version>.exe"
         $AISInstaller   = "AlteryxAISInstall_<Version>.exe"
         # Unattended execution arguments
@@ -76,9 +79,10 @@ function Install-Alteryx {
         }
     }
     Process {
+        $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -Status "Running"
         Write-Log -Type "INFO" -Message "Installation of Alteryx $($InstallationProperties.Product) $($Properties.Version)"
         # ------------------------------------------------------------------------------
-        # Alteryx Server
+        # * Alteryx Server
         # ------------------------------------------------------------------------------
         if ($InstallationProperties.Product -eq "Designer" -Or $InstallationProperties.Server -eq $true) {
             # Update file version number
@@ -93,7 +97,9 @@ function Install-Alteryx {
                 if (Test-Object -Path $ServerPath -NotFound) {
                     Write-Log -Type "ERROR" -Message "Path not found $DefaultServerPath"
                     Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) installation file could not be located"
-                    Write-Log -Type "WARN" -Message "Alteryx installation failed" -ExitCode 1
+                    Write-Log -Type "WARN" -Message "Alteryx installation failed"
+                    $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                    return $Installprocess
                 } else {
                     Write-Log -Type "DEBUG" -Message "Path not found $DefaultServerPath"
                 }
@@ -124,7 +130,9 @@ function Install-Alteryx {
                 } else {
                     Write-Log -Type "ERROR" -Message "Path not found $ServerPath"
                     Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) installation file could not be located"
-                    Write-Log -Type "WARN" -Message "Alteryx installation failed" -ExitCode 1
+                    Write-Log -Type "WARN" -Message "Alteryx installation failed"
+                    $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                    return $Installprocess
                 }
             }
             # Configuration
@@ -138,39 +146,54 @@ function Install-Alteryx {
             }
         }
         # ------------------------------------------------------------------------------
-        # Predictive Tools
+        # * Predictive Tools
         # ------------------------------------------------------------------------------
         if ($InstallationProperties.PredictiveTools -eq $true) {
+            $RInstall = $true
             # Update file version number
             $RFileName = Set-Tags -String $RInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
             if ($InstallationProperties.Product -eq "Server") {
                 # Use embedded R installer
-                $RPath = Join-Path -Path $Properties.InstallationPath -ChildPath "RInstaller\$RFileName"
+                $RPath = Join-Path -Path $RDirectory -ChildPath $RFileName
             } elseif ($InstallationProperties.Product -eq "Designer") {
                 $RPath = Join-Path -Path $Properties.SrcDirectory -ChildPath $RFileName
             }
             # Check source file
             Write-Log -Type "INFO" -Message "Installing Predictive Tools"
             if ($PSCmdlet.ShouldProcess($RPath, "Install")) {
-                if (Test-Path -Path $RPath) {
+                if (Test-Object -Path $RPath -NotFound) {
+                    # Look for a file which may not match the patch versioning
+                    $RFile = Get-ChildItem -Path $RDirectory -Filter "RInstaller_*.exe"
+                    if (($InstallationProperties.Product -eq "Server") -Or (($RFile | Measure-Object).Count) -eq 1) {
+                        $RPath = $RFile.FullName
+                    } else {
+                        Write-Log -Type "ERROR" -Message "Path not found $RPath"
+                        Write-Log -Type "ERROR" -Message "Predictive Tools installation file could not be located"
+                        Write-Log -Type "WARN"  -Message "Predictive Tools installation failed"
+                        $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -ErrorCount 1
+                        $RInstall = $false
+                    }
+                }
+                if (($RInstall = $true) -And (Test-Object -Path $RPath)) {
                     $RCommand = (@("&", $RPath, $Arguments) -join " ").Trim()
                     Write-Log -Type "DEBUG" -Message $RCommand
-                    $RInstall = Start-Process -FilePath $RPath -ArgumentList $Arguments -Verb "RunAs" -PassThru -Wait
+                    if ($Unattended) {
+                        $RInstall = Start-Process -FilePath $RPath -ArgumentList $Arguments -Verb "RunAs" -PassThru -Wait
+                    } else {
+                        $RInstall = Start-Process -FilePath $RPath -Verb "RunAs" -PassThru -Wait
+                    }                        
                     Write-Log -Type "DEBUG" -Message $RInstall
                     if ($RInstall.ExitCode -eq 0) {
                         Write-Log -Type "CHECK" -Message "Predictive Tools installed successfully"
                     } else {
-                        Write-Log -Type "ERROR" -Message "An error occured during the installation" -ExitCode $RInstall.ExitCode
+                        Write-Log -Type "ERROR" -Message "An error occured during the installation"
+                        $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -ErrorCount 1
                     }
-                } else {
-                    Write-Log -Type "ERROR" -Message "Path not found $RPath"
-                    Write-Log -Type "ERROR" -Message "Predictive Tools installation file could not be located"
-                    Write-Log -Type "WARN"  -Message "Predictive Tools installation failed" -ExitCode 1
                 }
             }
         }
         # ------------------------------------------------------------------------------
-        # Intelligence Suite
+        # * Intelligence Suite
         # ------------------------------------------------------------------------------
         if ($InstallationProperties.IntelligenceSuite -eq $true) {
             # Update file version number
@@ -187,7 +210,11 @@ function Install-Alteryx {
                 if (Test-Path -Path $AISPath) {
                     $AISCommand = (@("&", $AISPath, $Arguments) -join " ").Trim()
                     Write-Log -Type "DEBUG" -Message $AISCommand
-                    $AISInstall = Start-Process -FilePath $AISPath -ArgumentList $Arguments -Verb "RunAs" -PassThru -Wait
+                    if ($Unattended) {
+                        $AISInstall = Start-Process -FilePath $AISPath -ArgumentList $Arguments -Verb "RunAs" -PassThru -Wait
+                    } else {
+                        $AISInstall = Start-Process -FilePath $AISPath -Verb "RunAs" -PassThru -Wait
+                    }
                     Write-Log -Type "DEBUG" -Message $AISInstall
                     if ($AISInstall.ExitCode -eq 0) {
                         Write-Log -Type "CHECK" -Message "Intelligence Suite installed successfully"
@@ -197,70 +224,102 @@ function Install-Alteryx {
                 } else {
                     Write-Log -Type "ERROR" -Message "Path not found $AISPath"
                     Write-Log -Type "ERROR" -Message "Intelligence Suite installation file could not be located"
-                    Write-Log -Type "WARN"  -Message "Intelligence Suite installation failed" -ExitCode 1
+                    Write-Log -Type "WARN"  -Message "Intelligence Suite installation failed"
+                    $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -ErrorCount 1
                 }
             }
         }
         # ------------------------------------------------------------------------------
-        # Data packages
+        # * Data packages
         # ------------------------------------------------------------------------------
+        # TODO
         if ($InstallationProperties.DataPackages -eq $true) {
-            # TODO
-            $DataPackage = $null
-            if ($null -ne $DataPackage) {
-                $DataPackagePath    = Join-Path -Path $Properties.SrcDirectory -ChildPath "$DataPackage.7z"
-                $DataPackageLog     = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${DataPackage}.log"
-                if (-Not (Test-Path -Path $DataPackagePath)) {
-                    Write-Log -Type "ERROR" -Message "Path not found $DataPackagePath"
-                    Write-Log -Type "ERROR" -Message "Data package could not be located"
-                    Write-Log -Type "WARN"  -Message "Data package installation failed" -ExitCode 1
-                }
-                # Unzip data package
-                $Destination = $DataPackagePath.Replace('.7z', '')
-                if (Test-Path -Path $Destination) {
-                    Write-Log -Type "WARN" -Message "Path already exists $Destination"
-                    Write-Log -Type "INFO" -Message "Skipping data package unzip"
-                } else {
-                    $7zip = "& ""$($Properties.'7zipPath')"" x ""$DataPackagePath"" -o$Destination -y"
-                    Write-Log -Type "DEBUG" -Message $7zip
-                    if (Test-Path -Path $Properties.'7zipPath') {
-                        if ($PSCmdlet.ShouldProcess($DataPackagePath, "Unzip")) {
-                            $Unzip = Invoke-Expression -Command $7zip | Out-String
+            if ($PSCmdlet.ShouldProcess("Alteryx Data Packages", "Install")) {
+                $InstallDataPackage = $true
+                $DataPackage = $null
+                if ($null -ne $DataPackage) {
+                    $DataPackagePath    = Join-Path -Path $Properties.SrcDirectory -ChildPath "$DataPackage.7z"
+                    $DataPackageLog     = Join-Path -Path $Properties.LogDirectory -ChildPath "${ISOTimeStamp}_${DataPackage}.log"
+                    if (-Not (Test-Path -Path $DataPackagePath)) {
+                        Write-Log -Type "ERROR" -Message "Path not found $DataPackagePath"
+                        Write-Log -Type "ERROR" -Message "Data package could not be located"
+                        Write-Log -Type "WARN"  -Message "Data package installation failed"
+                        $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -ErrorCount 1
+                        $InstallDataPackage = false
+                    }
+                    if ($InstallDataPackage -eq $true) {
+                        # Unzip data package
+                        $Destination = $DataPackagePath.Replace('.7z', '')
+                        if (Test-Path -Path $Destination) {
+                            Write-Log -Type "WARN" -Message "Path already exists $Destination"
+                            Write-Log -Type "INFO" -Message "Skipping data package unzip"
+                        } else {
+                            $7zip = "& ""$($Properties.'7zipPath')"" x ""$DataPackagePath"" -o$Destination -y"
+                            Write-Log -Type "DEBUG" -Message $7zip
+                            if (Test-Path -Path $Properties.'7zipPath') {
+                                if ($PSCmdlet.ShouldProcess($DataPackagePath, "Unzip")) {
+                                    $Unzip = Invoke-Expression -Command $7zip | Out-String
+                                }
+                            } else {
+                                Write-Log -Type "ERROR" -Message "Path not found $($Properties.'7zipPath')"
+                                Write-Log -Type "ERROR" -Message "7zip could not be located"
+                                Write-Log -Type "WARN" -Message "Data package installation failed"
+                                $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -ErrorCount 1
+                                $InstallDataPackage = false
+                            }
+                            # ! TODO check unzip
+                            Write-Log -Type "DEBUG" -Message $Unzip
                         }
-                    } else {
-                        Write-Log -Type "ERROR" -Message "Path not found $($Properties.'7zipPath')"
-                        Write-Log -Type "ERROR" -Message "7zip could not be located"
-                        Write-Log -Type "WARN" -Message "Data package installation failed" -ExitCode 1
-                    }
-                    # ! TODO check unzip
-                    Write-Log -Type "DEBUG" -Message $Unzip
-                }
-                # Check unzip outcome
-                if (Test-Path -Path $Destination) {
-                    # Run installer
-                    $DataPackageInstaller = Join-Path -Path $Destination -ChildPath "DataInstallCmd.exe"
-                    if (Test-Path -Path $DataPackageInstaller) {
-                        Install-AlteryxDataPackage -Path $DataPackageInstaller -InstallDirectory $Properties.DataPackagesPath -Log $DataPackageLog -Action "Install" -Unattended:$Unattended
+                        # Check unzip outcome
+                        if (Test-Path -Path $Destination) {
+                            # Run installer
+                            $DataPackageInstaller = Join-Path -Path $Destination -ChildPath "DataInstallCmd.exe"
+                            if (Test-Path -Path $DataPackageInstaller) {
+                                Install-AlteryxDataPackage -Path $DataPackageInstaller -InstallDirectory $Properties.DataPackagesPath -Log $DataPackageLog -Action "Install" -Unattended:$Unattended
+                            }
+                        } else {
+                            Write-Log -Type "ERROR" -Message "Path not found $Destination"
+                            Write-Log -Type "ERROR" -Message "Data package unzipping failed"
+                            Write-Log -Type "WARN"  -Message "Data package installation failed"
+                            $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -ErrorCount 1
+                        }
                     }
                 } else {
-                    Write-Log -Type "ERROR" -Message "Path not found $Destination"
-                    Write-Log -Type "ERROR" -Message "Data package unzipping failed"
-                    Write-Log -Type "WARN"  -Message "Data package installation failed" -ExitCode 1
+                    Write-Log -Type "DEBUG" -Message "No data package specified"
+                    Write-Log -Type "WARN" -Message "Skipping data package installation"
                 }
-            } else {
-                Write-Log -Type "DEBUG" -Message "No data package specified"
             }
         }
         # ------------------------------------------------------------------------------
-        # Licensing
+        # * Licensing
         # ------------------------------------------------------------------------------
         if ($Properties.ActivateOnInstall -eq $true) {
-            Invoke-ActivateAlteryx -Properties $Properties -Unattended:$Unattended
+            if ($PSCmdlet.ShouldProcess("Alteryx license", "Activate")) {
+                $ActivateProcess = Invoke-ActivateAlteryx -Properties $Properties -Unattended:$Unattended
+                if ($ActivateProcess.Success -eq $false) {
+                    $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -ErrorCount 1
+                }
+            }
         } else {
             Write-Log -Type "WARN" -Message "Skipping license activation"
         }
+        # ------------------------------------------------------------------------------
+        # * Check
+        # ------------------------------------------------------------------------------
+        if ($Installprocess.ErrorCount -eq 0) {
+            Write-Log -Type "CHECK" -Message "Alteryx $($InstallationProperties.Product) $($Properties.Version) installed successfully"
+            $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -Status "Completed" -Success $true
+        } else {
+            if ($Installprocess.ErrorCount -eq 1) {
+                $ErrorCount = "one error"
+            } else {
+                $ErrorCount = "$($Installprocess.ErrorCount) errors"
+            }
+            Write-Log -Type "WARN" -Message "Alteryx $($InstallationProperties.Product) $($Properties.Version) was installed with $ErrorCount"
+            $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -Status "Completed"
+        }
     }
     End {
-        Write-Log -Type "CHECK" -Message "Alteryx $($InstallationProperties.Product) $($Properties.Version) installed successfully"
+        return $Installprocess
     }
 }
