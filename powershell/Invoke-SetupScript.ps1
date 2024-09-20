@@ -1,16 +1,16 @@
-function Set-Configuration {
+function Invoke-SetupScript {
     <#
         .SYNOPSIS
-        Configure Alteryx deploy utility
+        Set-up Alteryx deploy utility
 
         .DESCRIPTION
-        Configuration wizard for the required parameters of the alteryx-deploy utility
+        Set-up wizard to configure the required parameters of the alteryx-deploy utility
 
         .NOTES
-        File name:      Set-Configuration.ps1
+        File name:      Invoke-SetupScript.ps1
         Author:         Florian Carrier
         Creation date:  2022-05-03
-        Last modified:  2024-09-17
+        Last modified:  2024-09-20
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -39,20 +39,20 @@ function Set-Configuration {
         # Log function call
         Write-Log -Type "DEBUG" -Message $MyInvocation.MyCommand.Name
         # Process status
-        $ConfigureProcess = New-ProcessObject -Name $MyInvocation.MyCommand.Name
+        $SetupProcess   = New-ProcessObject -Name $MyInvocation.MyCommand.Name
         # Parameters
         $ConfDirectory  = $ScriptProperties.ConfDirectory
         $DefaultPath    = Join-Path -Path $ConfDirectory -ChildPath $ScriptProperties.DefaultProperties
         $CustomPath     = Join-Path -Path $ConfDirectory -ChildPath $ScriptProperties.CustomProperties
-        $CustomHeader   = 
-"# ------------------------------------------------------------------------------
+        $CustomHeader   = "# ------------------------------------------------------------------------------
 # Add your custom configuration here
 # e.g. TempDirectory = D:\Temp
-# ------------------------------------------------------------------------------"
+# ------------------------------------------------------------------------------
+"
     }
     Process {
-        $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -Status "Running"
-        Write-Log -Type "NOTICE" -Message "Configuring script"
+        $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -Status "Running"
+        Write-Log -Type "NOTICE" -Message "Setting up script"
         # ------------------------------------------------------------------------------
         # * Configure script parameters
         Write-Log -Type "INFO" -Message "Configuring script parameters"
@@ -113,7 +113,7 @@ function Set-Configuration {
                 } catch {
                     Write-Log -Type "ERROR" -Message (Get-Error)
                     Write-Log -Type "ERROR" -Message "Custom configuration could not be saved"
-                    $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -ErrorCount 1
+                    $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -ErrorCount 1
                 }
             }
             # Reload properties
@@ -135,7 +135,7 @@ function Set-Configuration {
                 }
             }
             if ($ConfigureLicenseAPI) {
-                $LicenseAPIToken = Read-Host -Prompt $LicenseAPIPrompt
+                $LicenseAPIToken = (Read-Host -Prompt $LicenseAPIPrompt).Trim()
                 Write-Log -Type "DEBUG" -Message $LicenseAPIToken
                 Write-Log -Type "DEBUG" -Message $LicenseAPIPath
                 Out-File -FilePath $LicenseAPIPath -InputObject $LicenseAPIToken -Force
@@ -144,7 +144,7 @@ function Set-Configuration {
                 } else {
                     Write-Log -Type "ERROR" -Message (Get-Error)
                     Write-Log -Type "ERROR" -Message "License Portal API refresh token could not be saved"
-                    $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -ErrorCount 1
+                    $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -ErrorCount 1
                 }
             } else {
                 Write-Log -Type "WARN" -Message "Skipping License Portal API refresh token configuration"
@@ -172,8 +172,8 @@ function Set-Configuration {
                 }
             }
             if ($ConfigureServerAPI) {
-                $ServerAPIKey       = Read-Host -Prompt $APIKeyPrompt
-                $ServerAPISecret    = Read-Host -Prompt $APISecretPrompt
+                $ServerAPIKey       = (Read-Host -Prompt $APIKeyPrompt).Trim()
+                $ServerAPISecret    = (Read-Host -Prompt $APISecretPrompt).Trim()
                 $ServerAPIToken     = [Ordered]@{
                     "key"       = $ServerAPIKey
                     "secret"    = $ServerAPISecret
@@ -186,7 +186,7 @@ function Set-Configuration {
                 } else {
                     Write-Log -Type "ERROR" -Message (Get-Error)
                     Write-Log -Type "ERROR" -Message "Server API keys could not be saved"
-                    $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -ErrorCount 1
+                    $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -ErrorCount 1
                 }
             } else {
                 Write-Log -Type "WARN" -Message "Skipping Server API keys configuration"
@@ -214,7 +214,7 @@ function Set-Configuration {
             } catch {
                 Write-Log -Type "ERROR" -Message (Get-Error)
                 Write-Log -Type "ERROR" -Message "Installation properties could not be saved"
-                $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -ErrorCount 1
+                $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -ErrorCount 1
             }
         }
         # ------------------------------------------------------------------------------
@@ -232,7 +232,7 @@ function Set-Configuration {
                 }
             }
             if ($ConfigureLicenseFile) {
-                $LicenseKeys = (Read-Host -Prompt "Enter Alteryx license key(s)") -split '[ ,]+'
+                $LicenseKeys = ((Read-Host -Prompt "Enter Alteryx license key(s)").Trim()) -split '[ ,]+'
                 Write-Log -Type "DEBUG" -Message $LicenseKeys
                 try {
                     Write-Log -Type "DEBUG" $LicenseFilePath
@@ -240,7 +240,7 @@ function Set-Configuration {
                 } catch {
                     Write-Log -Type "ERROR" -Message (Get-Error)
                     Write-Log -Type "ERROR" -Message "License file could not be saved"
-                    $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -ErrorCount 1
+                    $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -ErrorCount 1
                 }
             }
         }
@@ -248,21 +248,21 @@ function Set-Configuration {
         # TODO Configure SSL certificate
         # Write-Log -Type "INFO" -Message "Configuring SSL/TLS"
         # ------------------------------------------------------------------------------
-        if ($ConfigureProcess.ErrorCount -eq 5) {
+        if ($SetupProcess.ErrorCount -eq 5) {
             # If all configuration failed
-            Write-Log -Type "ERROR" -Message "Configuration wizard failed"
-            $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -Status "Failed" -ExitCode 1
-        } elseif ($ConfigureProcess.ErrorCount -gt 0) {
+            Write-Log -Type "ERROR" -Message "Set-up wizard failed"
+            $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -Status "Failed" -ExitCode 1
+        } elseif ($SetupProcess.ErrorCount -gt 0) {
             # If only partial failure
-            Write-Log -Type "WARN" -Message "Configuration wizard completed with errors"
-            $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -Status "Completed"
+            Write-Log -Type "WARN" -Message "Set-up wizard completed with errors"
+            $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -Status "Completed"
         } else {
             # Otherwise success
-            Write-Log -Type "CHECK" -Message "Configuration wizard complete"
-            $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -Status "Completed" -Success $true
+            Write-Log -Type "CHECK" -Message "Set-up wizard complete"
+            $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -Status "Completed" -Success $true
         }
     }
     End {
-        return $ConfigureProcess
+        return $SetupProcess
     }
 }
