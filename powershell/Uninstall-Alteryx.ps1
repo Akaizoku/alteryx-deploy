@@ -113,7 +113,7 @@ function Uninstall-Alteryx {
         # Update file version number
         $ServerFileName = Set-Tags -String $ServerInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
         $ServerPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $ServerFileName
-        Write-Log -Type "INFO" -Message "Uninstalling Alteryx $($InstallationProperties.Product)"
+        Write-Log -Type "INFO" -Message "Uninstalling Alteryx $($Properties.Product)"
         if ($PSCmdlet.ShouldProcess($ServerPath, "Uninstall")) {
             if (Test-Path -Path $ServerPath) {
                 if ($Properties.InstallAwareLog -eq $true) {
@@ -133,7 +133,7 @@ function Uninstall-Alteryx {
                 }
             } else {
                 Write-Log -Type "ERROR" -Message "Path not found $ServerPath"
-                Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) executable file could not be located"
+                Write-Log -Type "ERROR" -Message "Alteryx $($Properties.Product) executable file could not be located"
                 $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Failed" -ErrorCount 1 -ExitCode 1
                 return $Uninstallprocess
             }
@@ -148,7 +148,7 @@ function Uninstall-Alteryx {
         # * Check
         # ------------------------------------------------------------------------------
         if ($Uninstallprocess.ErrorCount -eq 0) {
-            Write-Log -Type "CHECK" -Message "Uninstallation of Alteryx $($InstallationProperties.Product) $Version successfull"
+            Write-Log -Type "CHECK" -Message "Uninstallation of Alteryx $($Properties.Product) $Version successfull"
             $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Completed" -Success $true
         } else {
             if ($Uninstallprocess.ErrorCount -eq 1) {
@@ -156,7 +156,7 @@ function Uninstall-Alteryx {
             } else {
                 $ErrorCount = "$($Uninstallprocess.ErrorCount) errors"
             }
-            Write-Log -Type "WARN" -Message "Alteryx $($InstallationProperties.Product) $($Properties.Version) was uninstalled with $ErrorCount"
+            Write-Log -Type "WARN" -Message "Alteryx $($Properties.Product) $($Properties.Version) was uninstalled with $ErrorCount"
             $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Completed"
         }
     }

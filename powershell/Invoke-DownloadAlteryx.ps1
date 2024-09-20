@@ -204,7 +204,7 @@ function Invoke-DownloadAlteryx {
         # * Check
         # ------------------------------------------------------------------------------
         if ($DownloadProcess.ErrorCount -eq 0) {
-            Write-Log -Type "CHECK" -Message "Download of Alteryx $($InstallationProperties.Product) $Version successfull"
+            Write-Log -Type "CHECK" -Message "Download of Alteryx $($Properties.Product) $Version successfull"
             $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Completed" -Success $true
         } elseif ($DownloadProcess.ErrorCount -eq 4) {
                 Write-Log -Type "ERROR" -Message "Download failed"

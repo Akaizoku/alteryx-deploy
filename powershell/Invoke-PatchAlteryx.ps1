@@ -40,7 +40,7 @@ function Invoke-PatchAlteryx {
         # Variables
         $ISOTimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
         # Filenames
-        if ($InstallationProperties.Product -eq "Designer") {
+        if ($Properties.Product -eq "Designer") {
             $PatchPrefix = "AlteryxPatchInstall"
         } else {
             $PatchPrefix = "AlteryxServerPatchInstall"
@@ -48,9 +48,9 @@ function Invoke-PatchAlteryx {
     }
     Process {
         $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -Status "Running"
-        Write-Log -Type "INFO" -Message "Installation of Alteryx $($InstallationProperties.Product) patch $($Properties.Version)"
+        Write-Log -Type "INFO" -Message "Installation of Alteryx $($Properties.Product) patch $($Properties.Version)"
         # Check products to install
-        if ($InstallationProperties.Product -eq "Designer" -Or $InstallationProperties.Server -eq $true) {
+        if ($Properties.Product -eq "Designer" -Or $InstallationProperties.Server -eq $true) {
             # Generate patch file version number
             $PatchVersion = [System.Version]::Parse($Properties.Version).Major.ToString() + "." + [System.Version]::Parse($Properties.Version).Minor.ToString() + "." + [System.Version]::Parse($Properties.Version).Build.ToString() + ".?." + [System.Version]::Parse($Properties.Version).Revision.ToString()
             $PatchInstaller = "$($PatchPrefix)_$($PatchVersion).exe"
@@ -87,7 +87,7 @@ function Invoke-PatchAlteryx {
                     }
                     Write-Log -Type "DEBUG" -Message $PatchInstall
                     if ($PatchInstall.ExitCode -eq 0) {
-                        Write-Log -Type "CHECK" -Message "Alteryx $($InstallationProperties.Product) patched successfully"
+                        Write-Log -Type "CHECK" -Message "Alteryx $($Properties.Product) patched successfully"
                     } else {
                         Write-Log -Type "ERROR" -Message "An error occured during the patch installation" -ExitCode $PatchInstall.ExitCode
                         $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
@@ -96,7 +96,7 @@ function Invoke-PatchAlteryx {
                     # TODO check registry for version and installinfo configuration file
                 } else {
                     Write-Log -Type "ERROR" -Message "Path not found $PatchPath"
-                    Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) patch file could not be located"
+                    Write-Log -Type "ERROR" -Message "Alteryx $($Properties.Product) patch file could not be located"
                     Write-Log -Type "WARN" -Message "Alteryx patch installation failed"
                     $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
                     return $PatchProcess
@@ -117,7 +117,7 @@ function Invoke-PatchAlteryx {
         # * Check
         # ------------------------------------------------------------------------------
         if ($PatchProcess.ErrorCount -eq 0) {
-            Write-Log -Type "CHECK" -Message "Alteryx $($InstallationProperties.Product) $($Properties.Version) patched successfully"
+            Write-Log -Type "CHECK" -Message "Alteryx $($Properties.Product) $($Properties.Version) patched successfully"
             $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -Status "Completed" -Success $true
         } else {
             if ($PatchProcess.ErrorCount -eq 1) {
@@ -125,7 +125,7 @@ function Invoke-PatchAlteryx {
             } else {
                 $ErrorCount = "$($PatchProcess.ErrorCount) errors"
             }
-            Write-Log -Type "WARN" -Message "Alteryx $($InstallationProperties.Product) $($Properties.Version) was patched with $ErrorCount"
+            Write-Log -Type "WARN" -Message "Alteryx $($Properties.Product) $($Properties.Version) was patched with $ErrorCount"
             $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -Status "Completed"
         }
     }

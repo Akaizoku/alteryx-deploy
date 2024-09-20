@@ -47,7 +47,7 @@ function Repair-Alteryx {
         $Command = "--rebuild -mongoconnection:mongodb://user:<Password>@<Hostname>:<Port>/AlteryxGallery?connectTimeoutMS=25000 -luceneconnection:mongodb://user:<Password>@<Hostname>:<Port>/AlteryxGallery_Lucene?connectTimeoutMS=25000 -searchProvider:Lucene"
     }
     Process {
-        Write-Log -Type "INFO" -Message "Starting repair of Alteryx $($InstallationProperties.Product) $($Properties.Version)"
+        Write-Log -Type "INFO" -Message "Starting repair of Alteryx $($Properties.Product) $($Properties.Version)"
         $Path = Get-AlteryxUtility -Utility $Utility
         # Retrieve database password
         $Passwords = Get-AlteryxEMongoPassword
