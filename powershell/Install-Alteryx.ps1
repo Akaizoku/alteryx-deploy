@@ -16,7 +16,7 @@ function Install-Alteryx {
         File name:      Install-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2024-09-18
+        Last modified:  2024-09-20
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -60,6 +60,7 @@ function Install-Alteryx {
         $Installprocess = New-ProcessObject -Name $MyInvocation.MyCommand.Name
         # Variables
         $ISOTimeStamp = Get-Date -Format "yyyyMMdd_HHmmss"
+        $MajorVersion = [System.String]::Concat([System.Version]::Parse($Properties.Version).Major, ".", [System.Version]::Parse($Properties.Version).Minor)
         $Tags = [Ordered]@{"Version" = $Properties.Version}
         # Filenames
         if ($InstallationProperties.Product -eq "Designer") {
@@ -135,15 +136,6 @@ function Install-Alteryx {
                     return $Installprocess
                 }
             }
-            # Configuration
-            if ($InstallationProperties.Product -eq "Server") {
-                if ($Unattended) {
-                    Write-Log -Type "WARN"  -Message "Do not forget to configure system settings"
-                } else {
-                    # TODO start system settings
-                    Write-Log -Type "WARN"  -Message "Do not forget to configure system settings"
-                }
-            }
         }
         # ------------------------------------------------------------------------------
         # * Predictive Tools
@@ -204,10 +196,17 @@ function Install-Alteryx {
                 $Workaround     = [Ordered]@{"Version" = [System.String]::Concat($Properties.Version, "_1")}
                 $WorkaroundPath = Set-Tags -String $AISInstaller -Tags (Resolve-Tags -Tags $Workaround -Prefix "<" -Suffix ">")
                 if (Test-Path -Path $WorkaroundPath) {
-                    $AISFileName    = Set-Tags -String $AISInstaller -Tags (Resolve-Tags -Tags $Workaround -Prefix "<" -Suffix ">")
+                    $AISFileName    = $WorkaroundPath
                     $AISPath        = Join-Path -Path $Properties.SrcDirectory -ChildPath $AISFileName
                 } else {
                     # TODO Check latest file that matches the major version
+                    $Check          = [Ordered]@{"Version" = "$MajorVersion.*"}
+                    $CheckPattern   = Set-Tags -String $AISInstaller -Tags (Resolve-Tags -Tags $Check -Prefix "<" -Suffix ">")
+                    $CheckFile = Get-ChildItem -Path $CheckPattern | Sort-Object -Property "LastWriteTime" -Descending -Top 1
+                    if ($null -ne $CheckFile) {
+                        $AISFileName    = $CheckFile.Name
+                        $AISPath        = $CheckFile.FullName
+                    }
                 }
             }
             Write-Log -Type "INFO" -Message "Installing Intelligence Suite"
@@ -302,11 +301,20 @@ function Install-Alteryx {
             if ($PSCmdlet.ShouldProcess("Alteryx license", "Activate")) {
                 $ActivateProcess = Invoke-ActivateAlteryx -Properties $Properties -Unattended:$Unattended
                 if ($ActivateProcess.Success -eq $false) {
-                    $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -ErrorCount 1
+                    $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -ErrorCount $ActivateProcess.ErrorCount
                 }
             }
         } else {
             Write-Log -Type "WARN" -Message "Skipping license activation"
+        }
+        # ------------------------------------------------------------------------------
+        # * Configuration
+        # ------------------------------------------------------------------------------
+        if ($InstallationProperties.Product -eq "Server") {
+            $ConfigureProcess = Set-AlteryxConfiguration -Properties $Properties
+            if ($ConfigureProcess.Success -eq $false) {
+                $Installprocess = Update-ProcessObject -ProcessObject $Installprocess -ErrorCount $ConfigureProcess.ErrorCount
+            }
         }
         # ------------------------------------------------------------------------------
         # * Check

@@ -25,13 +25,10 @@ function Set-AlteryxConfiguration {
         [System.Collections.Specialized.OrderedDictionary]
         $Properties,
         [Parameter (
-            Position    = 2,
-            Mandatory   = $true,
-            HelpMessage = "Default script properties"
+            HelpMessage = "Non-interactive mode"
         )]
-        [ValidateNotNullOrEmpty ()]
-        [System.Collections.Specialized.OrderedDictionary]
-        $ScriptProperties
+        [Switch]
+        $Unattended
     )
     Begin {
         # Get global preference vrariables
@@ -43,10 +40,14 @@ function Set-AlteryxConfiguration {
     }
     Process {
         $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -Status "Running"
-        # TODO
-        Write-Log -Type "ERROR" -Message "Automated configuration of Alteryx is not yet support"
-        Write-Log -Type "WARN"  -Message "Please configure the application through Alteryx System Settings"
-        $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -Status "Cancelled"
+        if ($PSCmdlet.ShouldProcess("Alteryx System Settings", "Configure")) {
+            # TODO
+            Write-Log -Type "ERROR" -Message "Automated configuration of Alteryx is not yet support"
+            Write-Log -Type "WARN"  -Message "Please configure the application through Alteryx System Settings"
+            $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -Status "Cancelled"
+        } else {
+            $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -Status "Completed" -Success $true
+        }
     }
     End {
         return $ConfigureProcess

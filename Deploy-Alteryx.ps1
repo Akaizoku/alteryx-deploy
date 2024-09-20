@@ -281,7 +281,7 @@ Process {
     switch ($Action) {
         "activate"      { $Process = Invoke-ActivateAlteryx     -Properties $Properties -Unattended:$Unattended                                                 }
         "backup"        { $Process = Invoke-BackupAlteryx       -Properties $Properties -Unattended:$Unattended                                                 }
-        "configure"     { $Process = Set-AlteryxConfiguration   -Properties $Properties -ScriptProperties $ScriptProperties                                     }
+        "configure"     { $Process = Set-AlteryxConfiguration   -Properties $Properties -Unattended:$Unattended                                                 }
         "deactivate"    { $Process = Invoke-DeactivateAlteryx   -Properties $Properties -Unattended:$Unattended                                                 }
         "download"      { $Process = Invoke-DownloadAlteryx     -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
         "install"       { $Process = Install-Alteryx            -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
