@@ -60,7 +60,7 @@ function Invoke-SetupScript {
             $ConfigureParameters = $true
             # Check if custom configuration ahs already been set
             if (Test-Path -Path $CustomPath) {
-                $CustomConfig = (Get-Content -Path $CustomPath).Trim()
+                $CustomConfig = Get-Content -Path $CustomPath -Raw
                 if ($CustomConfig -ne $CustomHeader) {
                     $ConfigureParameters = Confirm-Prompt -Prompt "Do you want to overwrite the existing configuration?"
                 }
