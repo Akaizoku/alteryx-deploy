@@ -55,6 +55,7 @@ function Invoke-SetupScript {
         Write-Log -Type "NOTICE" -Message "Setting up script"
         # ------------------------------------------------------------------------------
         # * Configure script parameters
+        # ------------------------------------------------------------------------------
         Write-Log -Type "INFO" -Message "Configuring script parameters"
         if ($PSCmdlet.ShouldProcess("Script parameters", "Configure")) {
             $ConfigureParameters = $true
@@ -120,7 +121,8 @@ function Invoke-SetupScript {
             $Properties = Get-Properties -Path $DefaultPath -CustomPath $CustomPath
         }
         # ------------------------------------------------------------------------------
-        # # * Configure license API token
+        # * Configure license API token
+        # ------------------------------------------------------------------------------
         Write-Log -Type "INFO" -Message "Configuring License Portal API refresh token"
         if ($PSCmdlet.ShouldProcess("License Portal API refresh token", "Configure")) {
             $LicenseAPIPath         = Join-Path -Path "$PSScriptRoot/.." -ChildPath "$($Properties.ResDirectory)/$($Properties.LicenseAPIFile)"
@@ -151,7 +153,8 @@ function Invoke-SetupScript {
             }
         }
         # # ------------------------------------------------------------------------------
-        # # * Configure Server API keys
+        # * Configure Server API keys
+        # ------------------------------------------------------------------------------
         Write-Log -Type "INFO" -Message "Configuring Server API keys"
         if ($PSCmdlet.ShouldProcess("Server API keys", "Configure")) {
             $ServerAPIPath      = Join-Path -Path "$PSScriptRoot/.." -ChildPath "$($Properties.ResDirectory)/$($Properties.ServerAdminAPI)"
@@ -194,6 +197,7 @@ function Invoke-SetupScript {
         }
         # ------------------------------------------------------------------------------
         # * Configure installation properties
+        # ------------------------------------------------------------------------------
         Write-Log -Type "INFO" -Message "Configuring installation properties"
         if ($PSCmdlet.ShouldProcess("Installation properties", "Configure")) {
             $InstallationPropertiesPath = Join-Path -Path $ConfDirectory -ChildPath $Properties.InstallationOptions
@@ -219,6 +223,7 @@ function Invoke-SetupScript {
         }
         # ------------------------------------------------------------------------------
         # * Configure license file
+        # ------------------------------------------------------------------------------
         Write-Log -Type "INFO" -Message "Configuring license file"
         if ($PSCmdlet.ShouldProcess("License file", "Configure")) {
             $LicenseFilePath        = Join-Path -Path "$PSScriptRoot/.." -ChildPath "$($Properties.ResDirectory)/$($Properties.LicenseFile)"
@@ -245,8 +250,16 @@ function Invoke-SetupScript {
             }
         }
         # ------------------------------------------------------------------------------
-        # TODO Configure SSL certificate
+        # * Configure SSL/TLS
+        # ------------------------------------------------------------------------------
         # Write-Log -Type "INFO" -Message "Configuring SSL/TLS"
+        # TODO Check if certificate if provided
+        # TODO Generate self-signed cetrificate
+        # TODO Enable SSL configuration
+        # ------------------------------------------------------------------------------
+        # * Configure SMTP
+        # ------------------------------------------------------------------------------
+        # TODO Configure SMTP settings
         # ------------------------------------------------------------------------------
         if ($SetupProcess.ErrorCount -eq 5) {
             # If all configuration failed
