@@ -68,11 +68,14 @@ function Invoke-PatchAlteryx {
                             Write-Log -Type "DEBUG" -Message $Service
                             $ServiceStatus = $WindowsService.Status
                             if ($ServiceStatus -eq "Running") {
-                                Invoke-StopAlteryx -Properties $Properties -Unattended:$Unattended
+                                $StopProcess = Invoke-StopAlteryx -Properties $Properties -Unattended:$Unattended
+                                if ($StopProcess.Success -eq $false) {
+                                    $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -ErrorCount $StopProcess.ErrorCount
+                                }
                             }
                         } else {
                             Write-Log -Type "ERROR" -Message "Alteryx Service ($Service) could not be found"
-                            $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -Status "Failed" -Success $false -ExitCode 1 -ErrorCount 1
+                            $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
                             return $PatchProcess
                         }
                     }
@@ -87,20 +90,43 @@ function Invoke-PatchAlteryx {
                         Write-Log -Type "CHECK" -Message "Alteryx $($InstallationProperties.Product) patched successfully"
                     } else {
                         Write-Log -Type "ERROR" -Message "An error occured during the patch installation" -ExitCode $PatchInstall.ExitCode
+                        $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                        return $PatchProcess
                     }
                     # TODO check registry for version and installinfo configuration file
                 } else {
                     Write-Log -Type "ERROR" -Message "Path not found $PatchPath"
                     Write-Log -Type "ERROR" -Message "Alteryx $($InstallationProperties.Product) patch file could not be located"
-                    Write-Log -Type "WARN" -Message "Alteryx patch installation failed" -ExitCode 1
+                    Write-Log -Type "WARN" -Message "Alteryx patch installation failed"
+                    $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                    return $PatchProcess
                 }
                 # Restart service if it was running before
                 if ($ServiceStatus -eq "Running") {
-                    Invoke-StartAlteryx -Properties $Properties -Unattended:$Unattended
+                    $StartProcess = Invoke-StartAlteryx -Properties $Properties -Unattended:$Unattended
+                    if ($StartProcess.Success -eq $false) {
+                        $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -ErrorCount $StartProcess.ErrorCount
+                    }
                 }
             }
         } else {
-            Write-Log -Type "ERROR" -Message "Designer or Server products must be enabled for a patch upgrade" -ExitCode 0
+            Write-Log -Type "ERROR" -Message "Designer or Server products must be enabled for a patch upgrade"
+            $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -Status "Completed"
+        }
+        # ------------------------------------------------------------------------------
+        # * Check
+        # ------------------------------------------------------------------------------
+        if ($PatchProcess.ErrorCount -eq 0) {
+            Write-Log -Type "CHECK" -Message "Alteryx $($InstallationProperties.Product) $($Properties.Version) patched successfully"
+            $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -Status "Completed" -Success $true
+        } else {
+            if ($PatchProcess.ErrorCount -eq 1) {
+                $ErrorCount = "one error"
+            } else {
+                $ErrorCount = "$($PatchProcess.ErrorCount) errors"
+            }
+            Write-Log -Type "WARN" -Message "Alteryx $($InstallationProperties.Product) $($Properties.Version) was patched with $ErrorCount"
+            $PatchProcess = Update-ProcessObject -ProcessObject $PatchProcess -Status "Completed"
         }
     }
     End {
