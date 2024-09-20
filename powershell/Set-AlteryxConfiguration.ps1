@@ -42,8 +42,8 @@ function Set-AlteryxConfiguration {
         $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -Status "Running"
         if ($PSCmdlet.ShouldProcess("Alteryx System Settings", "Configure")) {
             # TODO
-            Write-Log -Type "ERROR" -Message "Automated configuration of Alteryx is not yet support"
-            Write-Log -Type "WARN"  -Message "Please configure the application through Alteryx System Settings"
+            Write-Log -Type "WARN" -Message "Automated configuration of Alteryx is not yet supported"
+            Write-Log -Type "WARN" -Message "Please configure the application through Alteryx System Settings"
             $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -Status "Cancelled"
         } else {
             $ConfigureProcess = Update-ProcessObject -ProcessObject $ConfigureProcess -Status "Completed" -Success $true
