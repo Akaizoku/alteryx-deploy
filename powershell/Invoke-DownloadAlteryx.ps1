@@ -10,7 +10,7 @@ function Invoke-DownloadAlteryx {
         File name:      Invoke-DownloadAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2024-09-04
-        Last modified:  2024-09-18
+        Last modified:  2024-09-20
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -136,6 +136,11 @@ function Invoke-DownloadAlteryx {
                     }
                 }
                 if ($DownloadEXE -eq $true) {
+                    if (Test-Object -Path $DownloadPath -NotFound) {
+                        Write-Log -Type "INFO" -Message "Creating source directory $DownloadPath"
+                        New-Item -Path $DownloadPath -ItemType "Directory" | Out-Null
+                    }
+                    # Download file
                     Invoke-WebRequest -Uri $Release.URL -OutFile $DownloadPath
                     # Check downloaded file
                     Write-Log -Type "DEBUG" -Message $DownloadPath
