@@ -46,6 +46,7 @@ function Invoke-RestoreAlteryx {
         # Variables
         $ServicePath    = Join-Path -Path $Properties.InstallationPath -ChildPath "bin\AlteryxService.exe"
         $Staging        = $false
+        $MajorVersion = [System.String]::Concat([System.Version]::Parse($Properties.Version).Major, ".", [System.Version]::Parse($Properties.Version).Minor)
         # Restore options
         $Restore = [Ordered]@{
             "Database"      = $true
@@ -71,8 +72,10 @@ function Invoke-RestoreAlteryx {
     Process {
         $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Running"
         Write-Log -Type "NOTICE" -Message "Start $RestoreType restore of Alteryx Server"
+        # ----------------------------------------------------------------------------
+        # * Checks
+        # ----------------------------------------------------------------------------
         if ($PSCmdlet.ShouldProcess("Alteryx Service", "Stop")) {
-            # ----------------------------------------------------------------------------
             # Check Alteryx service status
             Write-Log -Type "INFO" -Message "Check Alteryx Service status"
             $Service = "AlteryxService"
@@ -89,7 +92,6 @@ function Invoke-RestoreAlteryx {
                 return $RestoreProcess
             }
         }
-        # ----------------------------------------------------------------------------
         # Check source backup path
         if ($PSCmdlet.ShouldProcess("Backup files", "Retrieve")) {
             # Check if custom backup path is specified
@@ -127,17 +129,24 @@ function Invoke-RestoreAlteryx {
                         }
                     }
                     Write-Log -Type "DEBUG" -Message $SourcePath
-                    Write-Log -Type "INFO" -Message "Retrieving most recent backup"
-                    $BackupFile = (Get-Object -Path $SourcePath -ChildItem -Type "File" -Filter "*.zip" | Sort-Object -Descending -Property "LastWriteTime" | Select-Object -First 1).FullName
+                    Write-Log -Type "INFO" -Message "Retrieving most recent backup matching major version $MajorVersion"
+                    $Pattern = ".+Alteryx_$($Properties.Product)_$($MajorVersion).+"
+                    $BackupFile = (Get-Object -Path $SourcePath -ChildItem -Type "File" -Filter "*.zip" | Where-Object -Property "Name" -Match $Pattern | Sort-Object -Descending -Property "LastWriteTime" | Select-Object -First 1).FullName
                     Write-Log -Type "DEBUG" -Message $BackupFile
+                    if ($null -ne $BackupFile) {
                     # Ask user confirmation on backup file
-                    if ($Unattended -eq $false) {
-                        $Confirmation = Confirm-Prompt -Prompt "Do you want to restore backup from $BackupFile?"
-                        if ($Confirmation -eq $false) {
-                            Write-Log -Type "WARN" -Message "Restore operation cancelled by user"
-                            $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Cancelled"
-                            return $RestoreProcess
+                        if ($Unattended -eq $false) {
+                            $Confirmation = Confirm-Prompt -Prompt "Do you want to restore backup from $BackupFile?"
+                            if ($Confirmation -eq $false) {
+                                Write-Log -Type "WARN" -Message "Restore operation cancelled by user"
+                                $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Cancelled"
+                                return $RestoreProcess
+                            }
                         }
+                    } else {
+                        Write-Log -Type "ERROR" -Message "No suitable database back-up file could be found"
+                        $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                        return $RestoreProcess
                     }
                     # Extract archive file
                     Write-Log -Type "INFO" -Message "Extract backup file contents"
@@ -146,13 +155,14 @@ function Invoke-RestoreAlteryx {
                     $Staging = $true
                 }
             } else {
-                Write-Log -Type "ERROR" -Message "No database backup could be found"
+                Write-Log -Type "ERROR" -Message "No database back-up file could be found"
                 $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
                 return $RestoreProcess
             }
         }
         # ----------------------------------------------------------------------------
-        # Restore configuration files
+        # * Restore configuration files
+        # ----------------------------------------------------------------------------
         if ($Restore.Configuration -eq $true) {
             Write-Log -Type "INFO" -Message "Restore configuration files"
             # TODO restore extra configuration files
@@ -170,7 +180,8 @@ function Invoke-RestoreAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
-        # Update configuration
+        # * Update configuration
+        # ----------------------------------------------------------------------------
         Write-Log -Type "INFO" -Message "Updating configuration"
         if ($PSCmdlet.ShouldProcess("RunTimeSetting.xml", "Update")) {
             $RunTimeSettingsXML = New-Object -TypeName "System.XML.XMLDocument"
@@ -246,7 +257,8 @@ function Invoke-RestoreAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
-        # (Re)Set controller token
+        # * (Re)Set controller token
+        # ----------------------------------------------------------------------------
         if ($Restore.Token -eq $true) {
             Write-Log -Type "INFO" -Message "Remove encrypted controller token"
             if ($PSCmdlet.ShouldProcess("Encrypted controller token", "Remove")) {
@@ -287,7 +299,8 @@ function Invoke-RestoreAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
-        # Set Run-as user
+        # * Set Run-as user
+        # ----------------------------------------------------------------------------
         if ($Restore.RunAsUser -eq $true) {
             if ($PSCmdlet.ShouldProcess("Run-as user credentials", "Restore")) {
                 # TODO
@@ -295,7 +308,8 @@ function Invoke-RestoreAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
-        # Set SMTP password
+        # * Set SMTP password
+        # ----------------------------------------------------------------------------
         if ($Restore.SMTPPassword -eq $true) {
             if ($PSCmdlet.ShouldProcess("SMTP password", "Restore")) {
                 # TODO
@@ -303,7 +317,8 @@ function Invoke-RestoreAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
-        # Reset storage key
+        # * Reset storage key
+        # ----------------------------------------------------------------------------
         if ($Restore.Configuration -eq $true) {
             Write-Log -Type "INFO" -Message "Restore storage key"
             if ($PSCmdlet.ShouldProcess("Storage Key", "Restore")) {
@@ -328,7 +343,8 @@ function Invoke-RestoreAlteryx {
             }
         }
         # ----------------------------------------------------------------------------
-        # Restore database
+        # * Restore database
+        # ----------------------------------------------------------------------------
         if ($Restore.Database -eq $true) {
             Write-Log -Type "INFO" -Message "Restore MongoDB database from backup"
             if ($PSCmdlet.ShouldProcess("MongoDB", "Restore")) {
