@@ -11,21 +11,22 @@
     .PARAMETER Action
     The action parameter corresponds to the operation to perform.
 
-    Nineteen options are available:
+    Multiple options are available:
 
     - activate:     activate the Alteryx application license
     - backup:       backup the Alteryx application database
     - configure:    configure the Alteryx application
     - deactivate:   deactivate the Alteryx application license
     - download:     download latest Alteryx application release
+    - help:         display the help documentation
     - install:      install the Alteryx application
-    - repair:       repair the Alteryx application database
     - open:         open the Alteryx application
     - patch:        patch upgrade the Alteryx application
     - ping:         check the status of the Alteryx application
     - repair:       repair the Alteryx application database
     - restart:      restart the Alteryx application
     - restore:      restore a backup of the Alteryx application database
+    - rollback:     restore a previous known state of the Alteryx application
     - setup:        set-up the script configuration
     - show:         display the script configuration
     - start:        start the Alteryx application
@@ -33,14 +34,116 @@
     - uninstall:    uninstall the Alteryx application
     - upgrade:      upgrade the Alteryx application
 
+    .PARAMETER Version
+    The optional version parameter enables users to speficy a version at runtime to override the script configuration.
+
+    .PARAMETER BackupPath
+    The optional back-up path paramater enables users to specify a back-up file location at runtime to override the script configuration.
+
+    .PARAMETER Product
+    The optional product parameter enabels users to specify the product to manage. It defaults to Server.
+
+    .PARAMETER LicenseKey
+    The optional license key paramater enables users to specify one or more license keys at runtime to override the script configuration.
+
     .PARAMETER Unattended
     The unattended switch define if the script should run in silent mode without any user interaction.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "setup"
+
+    Start the configuration wizard to guide the user through the set-up of the alteryx-deploy script.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "show"
+
+    Display the current script configuration back to the user.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "download"
+
+    Download the latest version of the licensed Alteryx application from the Alteryx license portal.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "install"
+
+    Start the installation process of the Alteryx application and its add-ons if configured.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "upgrade"
+
+    Start the (major) upgrade process of the Alteryx application and its add-ons if configured.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "patch"
+
+    Start the patch process of the Alteryx application.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "uninstall"
+
+    Start the uninstallation process of the Alteryx application and all of its add-ons.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "activate"
+
+    License the Alteryx application by registering the specified license keys through the Alteryx licensing system.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "deactivate"
+
+    Deregister the specified license keys through the Alteryx licensing system.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "backup"
+
+    Start the back-up process of the Alteryx database and all of the configuration files of the application.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "restore"
+
+    Start the restoration process of the Alteryx database and all of the configuration files of the application from a back-up file.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "repair"
+
+    Start the repair process of the Alteryx database.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "rollback"
+
+    Start the rollback process of the Alteryx application back to a previous known state from a back-up file.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "start"
+
+    Start the service powering the Alteryx application.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "stop"
+
+    Stop the service powering the Alteryx application.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "restart"
+
+    Restart the service powering the Alteryx application.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "ping"
+
+    Check the status of the service powering the Alteryx application and the connectivity to the Gallery.
+
+    .EXAMPLE
+    .\Deploy-Alteryx.ps1 -Action "open"
+
+    Open the user interface of the Alteryx applciation.
 
     .NOTES
     File name:      Deploy-Alteryx.ps1
     Author:         Florian Carrier
     Creation date:  2021-06-13
-    Last modified:  2024-09-20
+    Last modified:  2024-09-23
     Dependencies:   - PowerShell Tool Kit (PSTK)
                     - Alteryx PowerShell Module (PSAYX)
 
@@ -71,14 +174,15 @@ Param (
         "configure",
         "deactivate",
         "download",
+        "help",
         "install",
         "open",
         "patch",
         "ping",
         "repair",
-        "repair",
         "restart",
         "restore",
+        "rollback",
         "setup",
         "show",
         "start",
@@ -284,6 +388,7 @@ Process {
         "configure"     { $Process = Set-AlteryxConfiguration   -Properties $Properties -Unattended:$Unattended                                                 }
         "deactivate"    { $Process = Invoke-DeactivateAlteryx   -Properties $Properties -Unattended:$Unattended                                                 }
         "download"      { $Process = Invoke-DownloadAlteryx     -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
+        "help"          { $Process = Show-Help                                                                                                                  }
         "install"       { $Process = Install-Alteryx            -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
         "repair"        { $Process = Repair-Alteryx             -Properties $Properties -Unattended:$Unattended                                                 }
         "open"          { $Process = Open-Alteryx               -Properties $Properties -Unattended:$Unattended                                                 }
@@ -292,6 +397,7 @@ Process {
         "repair"        { $Process = Repair-Alteryx             -Properties $Properties -Unattended:$Unattended                                                 }
         "restart"       { $Process = Invoke-RestartAlteryx      -Properties $Properties -Unattended:$Unattended                                                 }
         "restore"       { $Process = Invoke-RestoreAlteryx      -Properties $Properties -Unattended:$Unattended                                                 }
+        "rollback"      { $Process = Invoke-RollbackAlteryx     -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
         "setup"         { $Process = Invoke-SetupScript         -Properties $Properties -ScriptProperties $ScriptProperties                                     }
         "show"          { $Process = Show-Configuration         -Properties $Properties -InstallationProperties $InstallationProperties                         }
         "start"         { $Process = Invoke-StartAlteryx        -Properties $Properties -Unattended:$Unattended                                                 }

@@ -16,7 +16,7 @@ function Uninstall-Alteryx {
         File name:      Uninstall-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2024-09-18
+        Last modified:  2024-09-23
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -69,11 +69,14 @@ function Uninstall-Alteryx {
             $ServerInstaller = "AlteryxInstallx64_<Version>.exe"
         } else {
             $ServerInstaller = "AlteryxServerInstallx64_<Version>.exe"
-        }
+        } 
     }
     Process {
         $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Running"
         Write-Log -Type "INFO" -Message "Uninstallation of Alteryx Server $($Properties.Version)"
+        # ------------------------------------------------------------------------------
+        # * Checks
+        # ------------------------------------------------------------------------------
         if ($Unattended -eq $false) {
             # Ask for confirmation to uninstall
             $ConfirmUninstall = Confirm-Prompt -Prompt "Are you sure that you want to uninstall $($Properties.Product)?"
@@ -82,6 +85,7 @@ function Uninstall-Alteryx {
                 $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Cancelled"
                 return $Uninstallprocess
             } else {
+                # TODO check if Alteryx is installed
                 # Suggest backup
                 $Backup = Confirm-Prompt -Prompt "Do you want to take a back-up of the database?"
                 if ($Backup) {
@@ -109,7 +113,6 @@ function Uninstall-Alteryx {
         # ------------------------------------------------------------------------------
         # * Uninstall Alteryx Server
         # ------------------------------------------------------------------------------
-        # TODO check if Alteryx is installed
         # Update file version number
         $ServerFileName = Set-Tags -String $ServerInstaller -Tags (Resolve-Tags -Tags $Tags -Prefix "<" -Suffix ">")
         $ServerPath     = Join-Path -Path $Properties.SrcDirectory -ChildPath $ServerFileName
