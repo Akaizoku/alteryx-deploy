@@ -202,7 +202,8 @@ function Install-Alteryx {
                     # Check latest file that matches the major version
                     $Check          = [Ordered]@{"Version" = "$MajorVersion.*"}
                     $CheckPattern   = Set-Tags -String $AISInstaller -Tags (Resolve-Tags -Tags $Check -Prefix "<" -Suffix ">")
-                    $CheckFile = Get-ChildItem -Path $CheckPattern | Sort-Object -Property "LastWriteTime" -Descending | Select-Object -First 1
+                    $CheckPath      = Join-Path -Path $Properties.SrcDirectory -ChildPath $CheckPattern
+                    $CheckFile      = Get-ChildItem -Path $CheckPath | Sort-Object -Property "LastWriteTime" -Descending | Select-Object -First 1
                     if ($null -ne $CheckFile) {
                         $AISFileName    = $CheckFile.Name
                         $AISPath        = $CheckFile.FullName
