@@ -10,7 +10,7 @@ function Invoke-RestartAlteryx {
         File name:      Invoke-RestartAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-08-27
-        Last modified:  2024-09-11
+        Last modified:  2024-09-23
     #>
     [CmdletBinding ()]
     Param (
@@ -39,17 +39,17 @@ function Invoke-RestartAlteryx {
     Process {
         $RestartProcess = Update-ProcessObject -ProcessObject $RestartProcess -Status "Running"
         Write-Log -Type "NOTICE" -Message "Restarting Alteryx Service"
-        $StartProcess = Invoke-StopAlteryx  -Properties $Properties -Unattended:$Unattended
-        if ($StartProcess.Success) {
-            $StopProcess = Invoke-StartAlteryx -Properties $Properties -Unattended:$Unattended
-            if ($StopProcess.Success) {
+        $StopProcess = Invoke-StopAlteryx  -Properties $Properties -Unattended:$Unattended
+        if ($StopProcess.Success) {
+            $StartProcess = Invoke-StartAlteryx -Properties $Properties -Unattended:$Unattended
+            if ($StartProcess.Success) {
                 Write-Log -Type "CHECK" -Message "Alteryx Service restart process complete"
                 $RestartProcess = Update-ProcessObject -ProcessObject $RestartProcess -Status "Completed" -Success $true
             } else {
-                $RestartProcess = Update-ProcessObject -ProcessObject $RestartProcess -Status $StopProcess.Status -ErrorCount $StopProcess.ErrorCount -ExitCode $StopProcess.ExitCode
+                $RestartProcess = Update-ProcessObject -ProcessObject $RestartProcess -Status $StopProcess.Status -ErrorCount $StartProcess.ErrorCount -ExitCode $StartProcess.ExitCode
             }
         } else {
-            $RestartProcess = Update-ProcessObject -ProcessObject $RestartProcess -Status $StartProcess.Status -ErrorCount $StartProcess.ErrorCount -ExitCode $StartProcess.ExitCode
+            $RestartProcess = Update-ProcessObject -ProcessObject $RestartProcess -Status $StartProcess.Status -ErrorCount $StopProcess.ErrorCount -ExitCode $StopProcess.ExitCode
         }
     }
     End {
