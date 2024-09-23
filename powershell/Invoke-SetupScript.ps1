@@ -10,7 +10,7 @@ function Invoke-SetupScript {
         File name:      Invoke-SetupScript.ps1
         Author:         Florian Carrier
         Creation date:  2022-05-03
-        Last modified:  2024-09-20
+        Last modified:  2024-09-23
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -112,7 +112,7 @@ function Invoke-SetupScript {
                     Write-Log -Type "DEBUG" -Message $CustomPath
                     Set-Content -Path $CustomPath -Value $CustomProperties.Trim() -Force
                 } catch {
-                    Write-Log -Type "ERROR" -Message (Get-Error)
+                    Write-Log -Type "ERROR" -Message (Get-PowerShellError)
                     Write-Log -Type "ERROR" -Message "Custom configuration could not be saved"
                     $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -ErrorCount 1
                 }
@@ -140,11 +140,11 @@ function Invoke-SetupScript {
                 $LicenseAPIToken = (Read-Host -Prompt $LicenseAPIPrompt).Trim()
                 Write-Log -Type "DEBUG" -Message $LicenseAPIToken
                 Write-Log -Type "DEBUG" -Message $LicenseAPIPath
-                Out-File -FilePath $LicenseAPIPath -InputObject $LicenseAPIToken -Force
+                Set-Content -Path $LicenseAPIPath -Value $LicenseAPIToken -NoNewline -Force
                 if (Test-Path -Path $LicenseAPIPath) {
                     Write-Log -Type "CHECK" -Message "License Portal API refresh token saved successfully"
                 } else {
-                    Write-Log -Type "ERROR" -Message (Get-Error)
+                    Write-Log -Type "ERROR" -Message (Get-PowerShellError)
                     Write-Log -Type "ERROR" -Message "License Portal API refresh token could not be saved"
                     $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -ErrorCount 1
                 }
@@ -183,11 +183,11 @@ function Invoke-SetupScript {
                 } | ConvertTo-JSON
                 Write-Log -Type "DEBUG" -Message $ServerAPIToken
                 Write-Log -Type "DEBUG" -Message $ServerAPIPath
-                Out-File -FilePath $ServerAPIPath -InputObject $ServerAPIToken -Force
+                Set-Content -Path $ServerAPIPath -Value $ServerAPIToken -Force
                 if (Test-Path -Path $ServerAPIPath) {
                     Write-Log -Type "CHECK" -Message "Server API keys saved successfully"
                 } else {
-                    Write-Log -Type "ERROR" -Message (Get-Error)
+                    Write-Log -Type "ERROR" -Message (Get-PowerShellError)
                     Write-Log -Type "ERROR" -Message "Server API keys could not be saved"
                     $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -ErrorCount 1
                 }
@@ -214,9 +214,9 @@ function Invoke-SetupScript {
             }
             try {
                 Write-Log -Type "DEBUG" -Message $NewInstallationProperties
-                Set-Content -Path $InstallationPropertiesPath -Value $NewInstallationProperties
+                Set-Content -Path $InstallationPropertiesPath -Value $NewInstallationProperties -Force
             } catch {
-                Write-Log -Type "ERROR" -Message (Get-Error)
+                Write-Log -Type "ERROR" -Message (Get-PowerShellError)
                 Write-Log -Type "ERROR" -Message "Installation properties could not be saved"
                 $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -ErrorCount 1
             }
@@ -241,9 +241,9 @@ function Invoke-SetupScript {
                 Write-Log -Type "DEBUG" -Message $LicenseKeys
                 try {
                     Write-Log -Type "DEBUG" $LicenseFilePath
-                    Set-Content -Path $LicenseFilePath -Value $LicenseKeys
+                    Set-Content -Path $LicenseFilePath -Value $LicenseKeys -Force
                 } catch {
-                    Write-Log -Type "ERROR" -Message (Get-Error)
+                    Write-Log -Type "ERROR" -Message (Get-PowerShellError)
                     Write-Log -Type "ERROR" -Message "License file could not be saved"
                     $SetupProcess = Update-ProcessObject -ProcessObject $SetupProcess -ErrorCount 1
                 }
