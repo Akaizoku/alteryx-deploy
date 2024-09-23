@@ -10,7 +10,7 @@ function Update-Alteryx {
         File name:      Update-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-09-02
-        Last modified:  2024-09-18
+        Last modified:  2024-09-23
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -44,7 +44,7 @@ function Update-Alteryx {
         # Log function call
         Write-Log -Type "DEBUG" -Message $MyInvocation.MyCommand.Name
         # Process status
-        $Uninstallprocess = New-ProcessObject -Name $MyInvocation.MyCommand.Name
+        $UninstallProcess = New-ProcessObject -Name $MyInvocation.MyCommand.Name
         # Clear error pipeline
         $Error.Clear()
         # Retrieve current version
@@ -59,7 +59,7 @@ function Update-Alteryx {
         $Properties.ActivateOnInstall = $Properties.ActivateOnUpgrade
     }
     Process {
-        $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Running"
+        $UninstallProcess = Update-ProcessObject -ProcessObject $UninstallProcess -Status "Running"
         Write-Log -Type "CHECK" -Object "Starting Alteryx Server upgrade from $BackupVersion to $($Properties.Version)"
         # Check installation path
         $InstallDirectory = Get-AlteryxInstallDirectory
@@ -76,8 +76,8 @@ function Update-Alteryx {
                 $AlteryxService = Get-AlteryxUtility -Utility "Service" -Path $InstallationPath
             } else {
                 Write-Log -Type "WARN" -Message "Upgrade cancelled by user"
-                $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Cancelled"
-                return $Uninstallprocess
+                $UninstallProcess = Update-ProcessObject -ProcessObject $UninstallProcess -Status "Cancelled"
+                return $UninstallProcess
             }
         } else {
             # Retrieve Alteryx Service utility path
@@ -93,10 +93,10 @@ function Update-Alteryx {
         $BackupProcess = Invoke-BackupAlteryx -Properties $BackUpProperties -Unattended:$Unattended
         if ($BackupProcess.Success -eq $false) {
             if (Confirm-Prompt -Prompt "Do you still want to proceed with the upgrade?") {
-                $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -ErrorCount 1
+                $UninstallProcess = Update-ProcessObject -ProcessObject $UninstallProcess -ErrorCount 1
             } else {
-                $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Cancelled" -ErrorCount 1
-                return $Uninstallprocess
+                $UninstallProcess = Update-ProcessObject -ProcessObject $UninstallProcess -Status "Cancelled" -ErrorCount 1
+                return $UninstallProcess
             }
         }
         # ------------------------------------------------------------------------------
@@ -104,8 +104,8 @@ function Update-Alteryx {
         # ------------------------------------------------------------------------------
         $InstallProcess = Install-Alteryx -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended
         if ($InstallProcess.Success -eq $false) {
-            $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Failed" -ErrorCount $InstallProcess.ErrorCount -ExitCode 1
-            return $Uninstallprocess
+            $UninstallProcess = Update-ProcessObject -ProcessObject $UninstallProcess -Status "Failed" -ErrorCount $InstallProcess.ErrorCount -ExitCode 1
+            return $UninstallProcess
         }
         # ------------------------------------------------------------------------------
         # * Rollback
@@ -117,19 +117,19 @@ function Update-Alteryx {
             $InstallProcess = Install-Alteryx -Properties $Properties -InstallationProperties $BackUpProperties -Unattended:$Unattended
             if ($InstallProcess.Success -eq $false) {
                 Write-Log -Type "ERROR" -Message "Rollback process failed"
-                $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Failed" -ErrorCount $InstallProcess.ErrorCount -ExitCode 1
-                return $Uninstallprocess
+                $UninstallProcess = Update-ProcessObject -ProcessObject $UninstallProcess -Status "Failed" -ErrorCount $InstallProcess.ErrorCount -ExitCode 1
+                return $UninstallProcess
             } else {
                 # Restore backup
                 $RestoreProcess = Invoke-RestoreAlteryx -Properties $BackUpProperties -Unattended:$Unattended
                 if ($RestoreProcess.Success -eq $false) {
                     Write-Log -Type "ERROR" -Message "Rollback process failed"
-                    $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Failed" -ErrorCount $RestoreProcess.ErrorCount -ExitCode 1
-                    return $Uninstallprocess
+                    $UninstallProcess = Update-ProcessObject -ProcessObject $UninstallProcess -Status "Failed" -ErrorCount $RestoreProcess.ErrorCount -ExitCode 1
+                    return $UninstallProcess
                 } else {
                     Write-Log -Type "CHECK" -Object "Alteryx Server rollback completed successfully"
                     Write-Log -Type "WARN" -Message "Check the logs to troubleshoot issue with upgrade"
-                    Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Failed" -ExitCode 1
+                    Update-ProcessObject -ProcessObject $UninstallProcess -Status "Failed" -ExitCode 1
                 }
             }
         } else {
@@ -137,6 +137,6 @@ function Update-Alteryx {
         }
     }
     End {
-        return $Uninstallprocess
+        return $UninstallProcess
     }
 }
