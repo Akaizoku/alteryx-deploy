@@ -117,6 +117,21 @@ function Invoke-RollbackAlteryx {
         } else {
             $RollbackProcess = Update-ProcessObject -ProcessObject $RollbackProcess -Status $StopProcess.Status -ErrorCount $StartProcess.ErrorCount -ExitCode $StartProcess.ExitCode
         }
+        # ------------------------------------------------------------------------------
+        # * Checks
+        # ------------------------------------------------------------------------------
+        if ($RollbackProcess.ErrorCount -eq 0) {
+            Write-Log -Type "CHECK" -Message "Alteryx $($Properties.Product) $($Properties.Version) installed successfully"
+            $RollbackProcess = Update-ProcessObject -ProcessObject $RollbackProcess -Status "Completed" -Success $true
+        } else {
+            if ($RollbackProcess.ErrorCount -eq 1) {
+                $ErrorCount = "one error"
+            } else {
+                $ErrorCount = "$($RollbackProcess.ErrorCount) errors"
+            }
+            Write-Log -Type "WARN" -Message "Alteryx $($Properties.Product) $($Properties.Version) was rolled back with $ErrorCount"
+            $RollbackProcess = Update-ProcessObject -ProcessObject $RollbackProcess -Status "Completed"
+        }
     }
     End {
         return $RollbackProcess
