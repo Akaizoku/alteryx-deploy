@@ -169,8 +169,8 @@ function Invoke-DownloadAlteryx {
                     }
                 }
                 if ($DownloadEXE -eq $true) {
-                    if (Test-Object -Path $DownloadPath -NotFound) {
-                        Write-Log -Type "INFO" -Message "Creating source directory $DownloadPath"
+                    if (Test-Object -Path $Properties.SrcDirectory -NotFound) {
+                        Write-Log -Type "INFO" -Message "Creating source directory $($Properties.SrcDirectory)"
                         New-Item -Path $DownloadPath -ItemType "Directory" | Out-Null
                     }
                     # Download file
