@@ -10,7 +10,7 @@ function Invoke-DownloadAlteryx {
         File name:      Invoke-DownloadAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2024-09-04
-        Last modified:  2024-09-20
+        Last modified:  2024-09-23
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -55,19 +55,52 @@ function Invoke-DownloadAlteryx {
         $RegistryKey = "HKLM:HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\SRC\Alteryx"
         # License API refresh token
         $LicenseAPIPath = Join-Path -Path $Properties.ResDirectory -ChildPath $Properties.LicenseAPIFile
-        $RefreshToken = Get-Content -Path $LicenseAPIPath -Raw
+        $RefreshToken = (Get-Content -Path $LicenseAPIPath -Raw) -replace "`r|`n", ""
         # Placeholder
         $Skip = $false
     }
     Process {
         $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Running"
+        Write-Log -Type "NOTICE" -Message "Starting download process"
+        # ------------------------------------------------------------------------------
+        # * Checks
+        # ------------------------------------------------------------------------------
+        if ($null -eq $RefreshToken) {
+            Write-Log -Type "ERROR" -Message "The Alteryx license portal API refresh token has not been configured"
+            if (-Not $Unattended) {
+                $RefreshToken = Read-Host -Prompt "Enter your Alteryx license portal API refresh token"
+            } else {
+                Write-Log -Type "ERROR" -Message "Download process cannot proceed"
+                $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                return $DownloadProcess
+            }
+        }
+        if ($null -eq $Properties.AccountID) {
+            Write-Log -Type "ERROR" -Message "The AccountID parameter has not been configured"
+            if (-Not $Unattended) {
+                $Properties.AccountID = Read-Host -Prompt "What is the ID of your account in the Alteryx license portal?"
+            } else {
+                Write-Log -Type "ERROR" -Message "Download process cannot proceed"
+                $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                return $DownloadProcess
+            }
+        }
         # ------------------------------------------------------------------------------
         # * Fetch latest version
         # ------------------------------------------------------------------------------
         # Get license API access token
         if ($PSCmdlet.ShouldProcess("License Portal access token", "Refresh")) {
-        $AccessToken    = Update-AlteryxLicenseToken -Token $RefreshToken -Type "Access"
-            Write-Log -Type "DEBUG" -Message $AccessToken
+            try {
+                # Catch issues calling the API
+                $AccessToken = Update-AlteryxLicenseToken -Token $RefreshToken -Type "Access"
+                Write-Log -Type "DEBUG" -Message $AccessToken
+            } catch {
+                Write-Log -Type "ERROR" -Message (Get-PowerShellError)
+                Write-Log -Type "ERROR" -Message "Cannot connect to License portal API"
+                $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                return $DownloadProcess
+            }
+            
         }
         # Check current and target versions
         if ($PSCmdlet.ShouldProcess("Latest release version", "Fetch")) {
@@ -141,7 +174,13 @@ function Invoke-DownloadAlteryx {
                         New-Item -Path $DownloadPath -ItemType "Directory" | Out-Null
                     }
                     # Download file
-                    Invoke-WebRequest -Uri $Release.URL -OutFile $DownloadPath
+                    try {
+                        Invoke-WebRequest -Uri $Release.URL -OutFile $DownloadPath -UseBasicParsing
+                    } catch {
+                        Write-Log -Type "ERROR" -Message (Get-PowerShellError)
+                        # Remove failed download file
+                        Remove-Item -Path $DownloadPath -Force
+                    }
                     # Check downloaded file
                     Write-Log -Type "DEBUG" -Message $DownloadPath
                     if (Test-Path -Path $DownloadPath) {
