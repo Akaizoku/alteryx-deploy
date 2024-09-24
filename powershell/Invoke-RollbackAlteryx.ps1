@@ -58,7 +58,7 @@ function Invoke-RollbackAlteryx {
     }
     Process {
         $RollbackProcess = Update-ProcessObject -ProcessObject $RollbackProcess -Status "Running"
-        Write-Log -Type "CHECK" -Object "Starting Alteryx Server rollback from $RollbackVersion to $($Properties.Version)"
+        Write-Log -Type "NOTICE" -Object "Starting Alteryx Server rollback from $RollbackVersion to $($Properties.Version)"
         # ------------------------------------------------------------------------------
         # * Checks
         # ------------------------------------------------------------------------------

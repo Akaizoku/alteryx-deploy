@@ -73,7 +73,7 @@ function Uninstall-Alteryx {
     }
     Process {
         $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -Status "Running"
-        Write-Log -Type "INFO" -Message "Uninstallation of Alteryx Server $($Properties.Version)"
+        Write-Log -Type "NOTICE" -Message "Uninstallation of Alteryx Server $($Properties.Version)"
         # ------------------------------------------------------------------------------
         # * Checks
         # ------------------------------------------------------------------------------
