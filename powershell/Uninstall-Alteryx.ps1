@@ -16,7 +16,7 @@ function Uninstall-Alteryx {
         File name:      Uninstall-Alteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2024-09-23
+        Last modified:  2024-09-24
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -89,7 +89,7 @@ function Uninstall-Alteryx {
                 # Suggest backup
                 $Backup = Confirm-Prompt -Prompt "Do you want to take a back-up of the database?"
                 if ($Backup) {
-                    $BackupProcess = Invoke-BackupAlteryx -Properties $BackUpProperties -Unattended:$Unattended
+                    $BackupProcess = Invoke-BackupAlteryx -Properties $Properties -Unattended:$Unattended
                     if ($BackupProcess.Success -eq $false) {
                         if (Confirm-Prompt -Prompt "Do you still want to proceed with the uninstallation?") {
                             $Uninstallprocess = Update-ProcessObject -ProcessObject $Uninstallprocess -ErrorCount 1
