@@ -136,7 +136,7 @@ function Invoke-RestoreAlteryx {
                     if ($null -ne $BackupFile) {
                     # Ask user confirmation on backup file
                         if ($Unattended -eq $false) {
-                            $Confirmation = Confirm-Prompt -Prompt "Do you want to restore backup from $BackupFile?"
+                            $Confirmation = Confirm-Prompt -Prompt "Do you want to restore backup from $($BackupFile.FileName)?"
                             if ($Confirmation -eq $false) {
                                 Write-Log -Type "WARN" -Message "Restore operation cancelled by user"
                                 $RestoreProcess = Update-ProcessObject -ProcessObject $RestoreProcess -Status "Cancelled"
