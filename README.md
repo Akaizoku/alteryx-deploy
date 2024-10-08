@@ -1,15 +1,15 @@
-# Alteryx Deploy
+# alteryx-deploy
 
 [![PSScriptAnalyzer](https://github.com/Akaizoku/alteryx-deploy/actions/workflows/scan.yml/badge.svg?branch=main)](https://github.com/Akaizoku/alteryx-deploy/actions/workflows/scan.yml)
 
-```asci
+<!-- ```asci
        _ _                                _            _            
   __ _| | |_ ___ _ __ _   ___  __      __| | ___ _ __ | | ___  _   _ 
  / _` | | __/ _ \ '__| | | \ \/ /____ / _` |/ _ \ '_ \| |/ _ \| | | |
 | (_| | | ||  __/ |  | |_| |>  <|____| (_| |  __/ |_) | | (_) | |_| |
  \__,_|_|\__\___|_|   \__, /_/\_\     \__,_|\___| .__/|_|\___/ \__, |
                       |___/                     |_|            |___/ 
-```
+``` -->
 
 `alteryx-deploy` is a small PowerShell utility for the automation of the deployment and maintenance of Alteryx.
 

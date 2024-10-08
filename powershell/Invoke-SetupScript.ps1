@@ -10,7 +10,7 @@ function Invoke-SetupScript {
         File name:      Invoke-SetupScript.ps1
         Author:         Florian Carrier
         Creation date:  2022-05-03
-        Last modified:  2024-09-23
+        Last modified:  2024-10-08
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -129,18 +129,25 @@ function Invoke-SetupScript {
             $LicenseAPIPrompt       = "License Portal API refresh token"
             $ConfigureLicenseAPI    = $true
             if (Test-Path -Path $LicenseAPIPath) {
-                $RefreshAPIToken = Get-Content -Path $LicenseAPIPath
-                if ($RefreshAPIToken -notin ($null, "")) {
-                    Write-Log -Type "WARN"  -Message "License Portal API refresh token has already been configured"
-                    Write-Log -Type "DEBUG" -Message $RefreshAPIToken
-                    $ConfigureLicenseAPI = Confirm-Prompt -Prompt "Do you want to reconfigure the License Portal API refresh token?"
+                try {
+                    $RefreshAPIToken = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String (Get-Content -Path $LicenseAPIPath)) -AsPlainText
+                    if ($RefreshAPIToken -notin ($null, "")) {
+                        Write-Log -Type "WARN"  -Message "License Portal API refresh token has already been configured"
+                        Write-Log -Type "DEBUG" -Message $RefreshAPIToken
+                        $ConfigureLicenseAPI = Confirm-Prompt -Prompt "Do you want to reconfigure the License Portal API refresh token?"
+                    }
+                }
+                catch {
+                    Write-Log -Type "DEBUG" -Message (Get-PowerShellError)
+                    Write-Log -Type "WARN" -Message "Failed to read current License Portal API token"
                 }
             }
             if ($ConfigureLicenseAPI) {
-                $LicenseAPIToken = (Read-Host -Prompt $LicenseAPIPrompt).Trim()
-                Write-Log -Type "DEBUG" -Message $LicenseAPIToken
+                $LicenseAPIToken            = (Read-Host -Prompt $LicenseAPIPrompt).Trim()
+                $EncryptedLicenseAPIToken   = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String $LicenseAPIToken.ToString() -AsPlainText -Force)
+                # Write-Log -Type "DEBUG" -Message $EncryptedLicenseAPIToken
                 Write-Log -Type "DEBUG" -Message $LicenseAPIPath
-                Set-Content -Path $LicenseAPIPath -Value $LicenseAPIToken -NoNewline -Force
+                Set-Content -Path $LicenseAPIPath -Value $EncryptedLicenseAPIToken -NoNewline -Force
                 if (Test-Path -Path $LicenseAPIPath) {
                     Write-Log -Type "CHECK" -Message "License Portal API refresh token saved successfully"
                 } else {
@@ -166,20 +173,22 @@ function Invoke-SetupScript {
                 $APIKeys = Get-Content -Path $ServerAPIPath | ConvertFrom-JSON
                 if ($APIKeys -notin ($null, "")) {
                     Write-Log -Type "WARN"  -Message "Server API keys have already been configured"
-                    Write-Log -Type "DEBUG" -Message $APIKeys
+                    # Write-Log -Type "DEBUG" -Message $APIKeys
                     $ConfigureServerAPI = Confirm-Prompt -Prompt "Do you want to reconfigure Server API keys?"
                     if ($ConfigureServerAPI) {
                         $APIKeyPrompt       = "$APIKeyPrompt (current $($APIKeys.Key))"
                         $APISecretPrompt    = "$APISecretPrompt (current $($APIKeys.Secret))"
                     }
                 }
+            } else {
+                $ConfigureServerAPI = Confirm-Prompt -Prompt "Do you want to configure Server API keys?"
             }
             if ($ConfigureServerAPI) {
                 $ServerAPIKey       = (Read-Host -Prompt $APIKeyPrompt).Trim()
                 $ServerAPISecret    = (Read-Host -Prompt $APISecretPrompt).Trim()
                 $ServerAPIToken     = [Ordered]@{
-                    "key"       = $ServerAPIKey
-                    "secret"    = $ServerAPISecret
+                    "key"       = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String $ServerAPIKey    -AsPlainText -Force)
+                    "secret"    = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String $ServerAPISecret -AsPlainText -Force)
                 } | ConvertTo-JSON
                 Write-Log -Type "DEBUG" -Message $ServerAPIToken
                 Write-Log -Type "DEBUG" -Message $ServerAPIPath
@@ -229,7 +238,7 @@ function Invoke-SetupScript {
             $LicenseFilePath        = Join-Path -Path "$PSScriptRoot/.." -ChildPath "$($Properties.ResDirectory)/$($Properties.LicenseFile)"
             $ConfigureLicenseFile   = $true
             if (Test-Path -Path $LicenseFilePath) {
-                $LicenseKeys = Get-Content -Path $LicenseFilePath
+                $LicenseKeys = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String (Get-Content -Path $LicenseFilePath)) -AsPlainText
                 if ($LicenseKeys -notin ($null, "")) {
                     Write-Log -Type "WARN"  -Message "License keys have already been configured"
                     Write-Log -Type "DEBUG" -Message $LicenseKeys
@@ -237,11 +246,12 @@ function Invoke-SetupScript {
                 }
             }
             if ($ConfigureLicenseFile) {
-                $LicenseKeys = ((Read-Host -Prompt "Enter Alteryx license key(s)").Trim()) -split '[ ,]+'
-                Write-Log -Type "DEBUG" -Message $LicenseKeys
+                $LicenseKeys = (Read-Host -Prompt "Enter Alteryx license key(s)").Trim()
                 try {
+                    $EncryptedLicenseKeys = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String $LicenseKeys -AsPlainText -Force)
+                    Write-Log -Type "DEBUG" -Message $EncryptedLicenseKeys
                     Write-Log -Type "DEBUG" $LicenseFilePath
-                    Set-Content -Path $LicenseFilePath -Value $LicenseKeys -Force
+                    Set-Content -Path $LicenseFilePath -Value $EncryptedLicenseKeys -Force
                 } catch {
                     Write-Log -Type "ERROR" -Message (Get-PowerShellError)
                     Write-Log -Type "ERROR" -Message "License file could not be saved"
@@ -259,7 +269,10 @@ function Invoke-SetupScript {
         # ------------------------------------------------------------------------------
         # * Configure SMTP
         # ------------------------------------------------------------------------------
+        # Write-Log -Type "INFO" -Message "Configuring SMTP settings"
         # TODO Configure SMTP settings
+        # ------------------------------------------------------------------------------
+        # * Checks
         # ------------------------------------------------------------------------------
         if ($SetupProcess.ErrorCount -eq 5) {
             # If all configuration failed

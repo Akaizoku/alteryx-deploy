@@ -74,13 +74,15 @@ function Invoke-RollbackAlteryx {
         # ------------------------------------------------------------------------------
         # * Uninstall
         # ------------------------------------------------------------------------------
+        # 
+        # TODO back error
         $UninstallProperties = Copy-OrderedHashtable -Hashtable $Properties -Deep
         $UninstallProperties.Version = $RollbackVersion
         # Unistall existing Alteryx version
         $UninstallProcess = Uninstall-Alteryx -Properties $UninstallProperties -InstallationProperties $InstallationProperties -Unattended:$Unattended
         if ($UninstallProcess.Success -eq $false) {
             Write-Log -Type "ERROR" -Message "Rollback process failed"
-            $RollbackProcess = Update-ProcessObject -ProcessObject $RollbackProcess -Status "Failed" -ErrorCount $UninstallProcess.ErrorCount -ExitCode $UninstallProcess.ExitCode
+            $RollbackProcess = Update-ProcessObject -ProcessObject $RollbackProcess -Status "Failed" -ErrorCount $UninstallProcess.ErrorCount -ExitCode 1
             return $RollbackProcess
         }
         # ------------------------------------------------------------------------------
@@ -88,9 +90,9 @@ function Invoke-RollbackAlteryx {
         # ------------------------------------------------------------------------------
         # Reinstall previous Alteryx version
         $InstallProcess = Install-Alteryx -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended
-        if ($InstallProcess.Success -eq $false) {
+        if ($InstallProcess.Success -eq $false -And $InstallProcess.ExitCode -eq 1) {
             Write-Log -Type "ERROR" -Message "Rollback process failed"
-            $RollbackProcess = Update-ProcessObject -ProcessObject $RollbackProcess -Status "Failed" -ErrorCount $InstallProcess.ErrorCount -ExitCode $InstallProcess.ExitCode
+            $RollbackProcess = Update-ProcessObject -ProcessObject $RollbackProcess -Status "Failed" -ErrorCount $InstallProcess.ErrorCount -ExitCode 1
             return $RollbackProcess
         }
         # ------------------------------------------------------------------------------

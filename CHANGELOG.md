@@ -1,9 +1,38 @@
 # Changelog
 
-All notable changes to the [Alteryx deploy](https://github.com/Akaizoku/alteryx-deploy) project will be documented in this file.
+All notable changes to the [`alteryx-deploy`](https://github.com/Akaizoku/alteryx-deploy) utility will be documented in this file. Roadmap and backlog are documented in the corresponding [GitHub project](https://github.com/users/Akaizoku/projects/4).
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [2.0.0](https://github.com/Akaizoku/alteryx-deploy/releases/2.0.0) - 2024-10-08
+
+Complete revamp to provide support for new installers (2022.3+), license portal API, as well as guardrails and usefull error handling.
+
+### Added
+
+- Invoke-DownloadAlteryx: Fetch releases from the Alteryx license portal
+- Invoke-PatchAlteryx: Install patch upgrades
+- Invoke-PingAlteryx: Check Server UI (Gallery) connectivity
+- Invoke-RollbackAlteryx: Rollback to previous known stable state
+- Invoke-SetupScript: Script configuration wizard
+- Open-Alteryx: Open Alteryx (G)UI
+- Repair-Alteryx: Repair embedded MongoDB database
+- Set-AlteryxConfiguration: Configure Alteryx system settings
+- Show-Help: Display script help documentation
+
+### Changed
+
+- Invoke-ActivateAlteryx: Improve process robustness
+- Invoke-BackupAlteryx: Improve process robustness
+- Invoke-DeactivateAlteryx: Deactivate licenses one-by-one
+- Invoke-RestartAlteryx: Improve process robustness
+- Invoke-RestoreAlteryx: Redesign process to improve robustness
+- Invoke-StartAlteryx: Improve process robustness
+- Invoke-StopAlteryx: Improve process robustness
+- Uninstall-Alteryx: Improve process robustness
+- Update-Alteryx: Add rollback in case of failure
+- Various changes were made to configuration files, including encryption of sensitive information; Please use the `setup` command to configure the scripts.
 
 ## [1.1.2](https://github.com/Akaizoku/alteryx-deploy/releases/1.1.2) - 2021-12-13
 

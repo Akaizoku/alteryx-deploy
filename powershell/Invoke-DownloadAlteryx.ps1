@@ -10,7 +10,7 @@ function Invoke-DownloadAlteryx {
         File name:      Invoke-DownloadAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2024-09-04
-        Last modified:  2024-09-23
+        Last modified:  2024-10-08
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -55,7 +55,7 @@ function Invoke-DownloadAlteryx {
         $RegistryKey = "HKLM:HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\SRC\Alteryx"
         # License API refresh token
         $LicenseAPIPath = Join-Path -Path $Properties.ResDirectory -ChildPath $Properties.LicenseAPIFile
-        $RefreshToken = (Get-Content -Path $LicenseAPIPath -Raw) -replace "`r|`n", ""
+        $RefreshToken = (ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String (Get-Content -Path $LicenseAPIPath)) -AsPlainText) -replace "`r|`n", ""
         # Placeholder
         $Skip = $false
     }
@@ -75,10 +75,10 @@ function Invoke-DownloadAlteryx {
                 return $DownloadProcess
             }
         }
-        if ($null -eq $Properties.AccountID) {
+        if ($null -eq $Properties.LicenseAccountID) {
             Write-Log -Type "ERROR" -Message "The AccountID parameter has not been configured"
             if (-Not $Unattended) {
-                $Properties.AccountID = Read-Host -Prompt "What is the ID of your account in the Alteryx license portal?"
+                $Properties.LicenseAccountID = Read-Host -Prompt "What is the ID of your account in the Alteryx license portal?"
             } else {
                 Write-Log -Type "ERROR" -Message "Download process cannot proceed"
                 $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
@@ -140,99 +140,81 @@ function Invoke-DownloadAlteryx {
         # ------------------------------------------------------------------------------
         # Check if download should proceed
         if ($Skip -eq $false) {
-            # TODO improve and loop through installation properties
-            if ($PSCmdlet.ShouldProcess("Patch installer", "Check")) {
-                # Check upgrade step
-                if (Compare-Version -Version $TargetVersion -Operator "ne" -Reference $MajorVersion) {
-                    # If major upgrade, download installer
-                    Write-Log -Type "INFO" -Message "Downloading $($Release.Product) version $($Release.Version)"
-                } else {
-                    # If minor or patch upgrade, download patch
-                    Write-Log -Type "INFO" -Message "Downloading $($Release.Product) patch version $($Release.Version)"
-                    $Release = Get-AlteryxLatestRelease -AccountID $Properties.LicenseAccountID -Token $AccessToken -ProductID $ProductID -Version $TargetVersion -Patch
-                }
+            $Products = [Ordered]@{
+                "Server"            = $ProductID
+                # "PredictiveTools"   = "Predictive Tools"  # Included within Server
+                "IntelligenceSuite" = "Alteryx Intelligence Suite"
+                # "DataPackages"      = "Data Packages"     # 
             }
-            # ------------------------------------------------------------------------------
-            # * Server/Designer
-            # ------------------------------------------------------------------------------
-            if ($PSCmdlet.ShouldProcess($ProductID, "Download")) {
-                $DownloadEXE = $true
-                $DownloadPath = Join-Path -Path $Properties.SrcDirectory -ChildPath $Release.FileName
-                # Check if file already exists
-                if (Test-Path -Path $DownloadPath) {
-                    Write-Log -Type "WARN" -Message "$ProductID installation file already exist in source directory"
-                    Write-Log -Type "DEBUG" -Message $DownloadPath
-                    if ($Unattended -eq $false) {
-                        $DownloadEXE = Confirm-Prompt "Do you want to redownload and overwrite the existing file?"
-                    } else {
-                        $DownloadEXE = $false
-                    }
-                }
-                if ($DownloadEXE -eq $true) {
-                    if (Test-Object -Path $Properties.SrcDirectory -NotFound) {
-                        Write-Log -Type "INFO" -Message "Creating source directory $($Properties.SrcDirectory)"
-                        New-Item -Path $DownloadPath -ItemType "Directory" | Out-Null
-                    }
-                    # Download file
-                    try {
-                        Invoke-WebRequest -Uri $Release.URL -OutFile $DownloadPath -UseBasicParsing
-                    } catch {
-                        Write-Log -Type "ERROR" -Message (Get-PowerShellError)
-                        # Remove failed download file
-                        Remove-Item -Path $DownloadPath -Force
-                    }
-                    # Check downloaded file
-                    Write-Log -Type "DEBUG" -Message $DownloadPath
-                    if (Test-Path -Path $DownloadPath) {
-                        Write-Log -Type "CHECK" -Message "$ProductID download completed successfully"
-                    } else {
-                        Write-Log -Type "ERROR" -Message "Download failed"
-                        $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
-                    }
-                } else {
-                    Write-Log -Type "WARN" -Message "Skipping download of $ProductID version $($Release.Version)"
-                }
-            }
-            # ------------------------------------------------------------------------------
-            # * Predictive Tools
-            # ------------------------------------------------------------------------------
-            # Check if download should proceed
-            if ($InstallationProperties.PredictiveTools -eq $true) {
-                if ($PSCmdlet.ShouldProcess("Predictive Tools", "Download")) {
-                    $DownloadR = $true
-                    if ($Properties.Product -eq "Server") {
-                        Write-Log -Type "INFO" -Message "Predictive Tools installer is packaged within the main installation file"
-                        if ($Unattended -eq $false) {
-                            $DownloadR = Confirm-Prompt -Prompt "Do you still want to download Predictive Tools separately?"
+            foreach ($Product in $Products.GetEnumerator()) {
+                if ($InstallationProperties.$($Product.Key) -eq $true) {
+                    $ProductID = $Product.Value
+                    if ($PSCmdlet.ShouldProcess($ProductID, "Download")) {
+                        $DownloadEXE = $true
+                        $FormattedVersion = "version"
+                        if ($ProductID -in ("Alteryx Server", "Alteryx Designer")) {
+                            # Check upgrade step
+                            if (Compare-Version -Version $TargetVersion -Operator "eq" -Reference $MajorVersion) {
+                                # If minor or patch upgrade, download patch
+                                $Release = Get-AlteryxLatestRelease -AccountID $Properties.LicenseAccountID -Token $AccessToken -ProductID $ProductID -Version $TargetVersion -Patch
+                                $FormattedVersion = "patch version"
+                            }
                         } else {
-                            $DownloadR = $false
+                            # Fetch latest release for add-ons
+                            $Release = Get-AlteryxLatestRelease -AccountID $Properties.LicenseAccountID -Token $AccessToken -ProductID $ProductID -Version $TargetVersion
+                            if ($null -eq $Release) {
+                                $DownloadEXE = $false
+                            }
+                        }
+                        $DownloadPath = Join-Path -Path $Properties.SrcDirectory -ChildPath $Release.FileName
+                        # Check if file already exists
+                        if (Test-Path -Path $DownloadPath) {
+                            Write-Log -Type "WARN" -Message "$ProductID installation file already exist in source directory"
+                            Write-Log -Type "DEBUG" -Message $DownloadPath
+                            if ($Unattended -eq $false) {
+                                $DownloadEXE = Confirm-Prompt "Do you want to redownload and overwrite the existing file?"
+                            } else {
+                                $DownloadEXE = $false
+                            }
+                        }
+                        # Additional check for R
+                        if ($ProductID -eq "Predictive Tools") {
+                            if ($Properties.Product -eq "Server") {
+                                Write-Log -Type "INFO" -Message "$ProductID installer is packaged within Server installation file"
+                            } else {
+                                Write-Log -Type "WARN" -Message "$ProductID download is not yet supported"
+                                $DownloadEXE = $false
+                            }
+                        }
+                        # Download process
+                        if ($DownloadEXE -eq $true) {
+                            Write-Log -Type "INFO" -Message "Downloading $($Release.Product) $FormattedVersion $($Release.Version)"
+                            if (Test-Object -Path $Properties.SrcDirectory -NotFound) {
+                                Write-Log -Type "INFO" -Message "Creating source directory $($Properties.SrcDirectory)"
+                                New-Item -Path $DownloadPath -ItemType "Directory" | Out-Null
+                            }
+                            # Download file
+                            try {
+                                Invoke-WebRequest -Uri $Release.URL -OutFile $DownloadPath -UseBasicParsing
+                            } catch {
+                                Write-Log -Type "ERROR" -Message (Get-PowerShellError)
+                                # Remove failed download file
+                                Remove-Item -Path $DownloadPath -Force
+                            }
+                            # Check downloaded file
+                            Write-Log -Type "DEBUG" -Message $DownloadPath
+                            if (Test-Path -Path $DownloadPath) {
+                                Write-Log -Type "CHECK" -Message "$ProductID download completed successfully"
+                            } else {
+                                Write-Log -Type "ERROR" -Message "Download failed"
+                                $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+                            }
+                        } else {
+                            Write-Log -Type "WARN" -Message "Skipping download of $ProductID version $($Release.Version)"
                         }
                     }
-                    if ($DownloadR = $true) {
-                        # TODO download RInstaller
-                    }
-                }
-            }
-            # ------------------------------------------------------------------------------
-            # * Intelligence Suite
-            # ------------------------------------------------------------------------------
-            if ($InstallationProperties.IntelligenceSuite -eq $true) {
-                if ($PSCmdlet.ShouldProcess("Intelligence Suite", "Download")) {
-                    $DownloadIS = $true
-                    if ($Unattended -eq $false) {
-                        $DownloadIS = Confirm-Prompt -Prompt "Do you want to download Intelligence Suite?"
-                    }
-                    if ($DownloadIS -eq $true) {
-                        # TODO download IS
-                    }
-                }
-            }
-            # ------------------------------------------------------------------------------
-            # * Data packages
-            # ------------------------------------------------------------------------------
-            if ($InstallationProperties.DataPackages -eq $true) {
-                if ($PSCmdlet.ShouldProcess("Data Packages", "Download")) {
-                    # TODO download data packages
+                } else {
+                    Write-Log -Type "WARN" -Message "Skipping $ProductID by configuration"
                 }
             }
         } else {

@@ -16,7 +16,7 @@ function Invoke-ActivateAlteryx {
         File name:      Invoke-ActivateAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-05
-        Last modified:  2024-09-18
+        Last modified:  2024-10-08
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -79,7 +79,7 @@ function Invoke-ActivateAlteryx {
                         $ActivateProcess = Update-ProcessObject -ProcessObject $ActivateProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
                         return $ActivateProcess
                     }
-                    $Properties.LicenseKey = @(Get-Content -Path $LicenseFilePath)
+                    $Properties.LicenseKey = (ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String (Get-Content -Path $LicenseFilePath)) -AsPlainText) -split '[ ,]+'
                 }
                 Write-Log -Type "DEBUG" -Message $Properties.LicenseKey
                 # Count keys

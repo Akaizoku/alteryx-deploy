@@ -16,7 +16,7 @@ function Invoke-DeactivateAlteryx {
         File name:      Invoke-DeactivateAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2021-11-20
-        Last modified:  2024-09-18
+        Last modified:  2024-10-08
 
         .LINK
         https://www.powershellgallery.com/packages/PSAYX
@@ -106,7 +106,7 @@ function Invoke-DeactivateAlteryx {
                                 $DeactivateProcess = Update-ProcessObject -ProcessObject $DeactivateProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
                                 return $DeactivateProcess
                             } else {
-                                $Properties.LicenseKey = @(Get-Content -Path $LicenseFilePath)
+                                $Properties.LicenseKey = (ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String (Get-Content -Path $LicenseFilePath)) -AsPlainText) -split '[ ,]+'
                             }
                         }
                         Write-Log -Type "DEBUG" -Message $Properties.LicenseKey
