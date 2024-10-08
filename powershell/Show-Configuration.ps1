@@ -16,7 +16,7 @@ function Show-Configuration {
         File name:      Show-Configuration.ps1
         Author:         Florian Carrier
         Creation date:  2021-07-08
-        Last modified:  2022-04-19
+        Last modified:  2024-09-11
     #>
     [CmdletBinding ()]
     Param (
@@ -41,16 +41,24 @@ function Show-Configuration {
         # Get global preference variables
         Get-CallerPreference -Cmdlet $PSCmdlet -SessionState $ExecutionContext.SessionState
         # Log function call
-        Write-Log -Type "DEBUG" -Message $MyInvocation.ScriptName
+        Write-Log -Type "DEBUG" -Message $MyInvocation.MyCommand.Name
+        # Process status
+        $ShowProcess = New-ProcessObject -Name $MyInvocation.MyCommand.Name
         # Display colour
         $Colour = "Cyan"
     }
     Process {
-        # Display default x custom script configuration
-        Write-Log -Type "INFO" -Object "Script configuration"
+        $ShowProcess = Update-ProcessObject -ProcessObject $ShowProcess -Status "Running"
+        Write-Log -Type "NOTICE" -Message "Displaying script configuration"
+        # Display default x custom script parameters
+        Write-Log -Type "INFO" -Object "Script parameters"
         Write-Host -Object ($Properties | Out-String).Trim() -ForegroundColor $Colour
-        # Display installation configuration
-        Write-Log -Type "INFO" -Object "Installation configuration"
+        # Display installation parameters
+        Write-Log -Type "INFO" -Object "Installation parameters"
         Write-Host -Object ($InstallationProperties | Out-String).Trim() -ForegroundColor $Colour
+        $ShowProcess = Update-ProcessObject -ProcessObject $ShowProcess -Status "Completed" -Success $true
+    }
+    End {
+        return $ShowProcess
     }
 }
