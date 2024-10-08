@@ -266,7 +266,7 @@ Begin {
     # Dependencies
     $Modules = [Ordered]@{
         "PSTK"  = "1.2.6"
-        "PSAYX" = "1.0.4"
+        "PSAYX" = "1.1.1"
     }
     # Load modules
     foreach ($Module in $Modules.GetEnumerator()) {
