@@ -69,13 +69,13 @@
 Download the latest stable version from the [`alteryx-deploy`](https://github.com/Akaizoku/alteryx-deploy) GitHub repository.
 
 ```powershell
-curl --remote-name --remote-header-name "https://github.com/Akaizoku/alteryx-deploy/releases/download/1.1.2/alteryx-deploy.1.1.2.zip"
+curl --remote-name --remote-header-name "https://github.com/Akaizoku/alteryx-deploy/releases/download/2.0.0/alteryx-deploy-v2.0.0.zip"
 ```
 
 Alternatively, if you do not wish to install the PowerShell modules required as dependencies, you can download the portable version.
 
 ```powershell
-curl --remote-name --remote-header-name "https://github.com/Akaizoku/alteryx-deploy/releases/download/1.1.2/alteryx-deploy.1.1.2.portable.zip"
+curl --remote-name --remote-header-name "https://github.com/Akaizoku/alteryx-deploy/releases/download/2.0.0/alteryx-deploy-v2.0.0-portable.zip"
 ```
 
 ### Configuration
@@ -518,7 +518,7 @@ Below are the steps to ping the Alteryx application.
 
 ### Open
 
-Open the user interface of the Alteryx applciation.
+Open the user interface of the Alteryx application.
 
 Below are the steps to open the Alteryx application.
 
@@ -562,7 +562,7 @@ Below is an example of a successful installation log:
 This module depends on the usage of functions provided by two PowerShell modules:
 
 1. PowerShell Tool Kit ([PSTK]) module (version 1.2.6);
-2. Alteryx PowerShell ([PSAYX]) module (version 1.1.0).
+2. Alteryx PowerShell ([PSAYX]) module (version 1.1.1).
 
 ## Compatibility
 
