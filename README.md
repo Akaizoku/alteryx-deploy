@@ -69,13 +69,13 @@
 Download the latest stable version from the [`alteryx-deploy`](https://github.com/Akaizoku/alteryx-deploy) GitHub repository.
 
 ```powershell
-curl --remote-name --remote-header-name "https://github.com/Akaizoku/alteryx-deploy/releases/download/2.0.0/alteryx-deploy-v2.0.0.zip"
+curl --remote-name --remote-header-name "https://github.com/Akaizoku/alteryx-deploy/releases/download/2.0.1/alteryx-deploy-v2.0.1.zip"
 ```
 
 Alternatively, if you do not wish to install the PowerShell modules required as dependencies, you can download the portable version.
 
 ```powershell
-curl --remote-name --remote-header-name "https://github.com/Akaizoku/alteryx-deploy/releases/download/2.0.0/alteryx-deploy-v2.0.0-portable.zip"
+curl --remote-name --remote-header-name "https://github.com/Akaizoku/alteryx-deploy/releases/download/2.0.1/alteryx-deploy-v2.0.1-portable.zip"
 ```
 
 ### Configuration
@@ -576,7 +576,8 @@ Only the first version supported is listed. Later releases should also be compat
 | [1.1.0]          | [2021.3] | 5.0        | 1.2.5  | 1.0.1   |
 | [1.1.1]          | [2021.3] | 5.0        | 1.2.5  | 1.0.1   |
 | [1.1.2]          | [2021.3] | 5.0        | 1.2.5  | 1.0.1   |
-| [2.0.0]          | [2024.1] | 5.0        | 1.2.6  | 1.1.1   |
+| [2.0.0]          | [2024.1] | 5.1        | 1.2.6  | 1.1.1   |
+| [2.0.1]          | [2024.2] | 5.1        | 1.2.6  | 1.1.1   |
 
 ## Known issues
 
@@ -611,4 +612,5 @@ If this occurs, simply run the command [`Stop-Transcript`](https://learn.microso
 [2.0.0]:https://github.com/Akaizoku/alteryx-deploy/releases/2.0.0
 [2021.3]:https://help.alteryx.com/release-notes/server/server-20213-release-notes
 [2024.1]:https://help.alteryx.com/release-notes/en/release-notes/server-release-notes/server-2024-1-release-notes.html
+[2024.2]:https://help.alteryx.com/release-notes/en/release-notes/server-release-notes/server-2024-2-release-notes.html
 [whitelist.alteryx.com]:(whitelist.alteryx.com)
