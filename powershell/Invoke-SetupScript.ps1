@@ -10,7 +10,7 @@ function Invoke-SetupScript {
         File name:      Invoke-SetupScript.ps1
         Author:         Florian Carrier
         Creation date:  2022-05-03
-        Last modified:  2024-10-08
+        Last modified:  2024-11-20
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -130,10 +130,9 @@ function Invoke-SetupScript {
             $ConfigureLicenseAPI    = $true
             if (Test-Path -Path $LicenseAPIPath) {
                 try {
-                    $RefreshAPIToken = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String (Get-Content -Path $LicenseAPIPath)) -AsPlainText
+                    $RefreshAPIToken = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String (Get-Content -Path $LicenseAPIPath))
                     if ($RefreshAPIToken -notin ($null, "")) {
                         Write-Log -Type "WARN"  -Message "License Portal API refresh token has already been configured"
-                        Write-Log -Type "DEBUG" -Message $RefreshAPIToken
                         $ConfigureLicenseAPI = Confirm-Prompt -Prompt "Do you want to reconfigure the License Portal API refresh token?"
                     }
                 }
@@ -143,9 +142,9 @@ function Invoke-SetupScript {
                 }
             }
             if ($ConfigureLicenseAPI) {
+                # Input in plain text to trim and prevent issues
                 $LicenseAPIToken            = (Read-Host -Prompt $LicenseAPIPrompt).Trim()
                 $EncryptedLicenseAPIToken   = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String $LicenseAPIToken.ToString() -AsPlainText -Force)
-                # Write-Log -Type "DEBUG" -Message $EncryptedLicenseAPIToken
                 Write-Log -Type "DEBUG" -Message $LicenseAPIPath
                 Set-Content -Path $LicenseAPIPath -Value $EncryptedLicenseAPIToken -NoNewline -Force
                 if (Test-Path -Path $LicenseAPIPath) {
@@ -238,14 +237,14 @@ function Invoke-SetupScript {
             $LicenseFilePath        = Join-Path -Path "$PSScriptRoot/.." -ChildPath "$($Properties.ResDirectory)/$($Properties.LicenseFile)"
             $ConfigureLicenseFile   = $true
             if (Test-Path -Path $LicenseFilePath) {
-                $LicenseKeys = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String (Get-Content -Path $LicenseFilePath)) -AsPlainText
+                $LicenseKeys = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String (Get-Content -Path $LicenseFilePath))
                 if ($LicenseKeys -notin ($null, "")) {
                     Write-Log -Type "WARN"  -Message "License keys have already been configured"
-                    Write-Log -Type "DEBUG" -Message $LicenseKeys
                     $ConfigureLicenseFile = Confirm-Prompt -Prompt "Do you want to overwrite the existing license keys?"
                 }
             }
             if ($ConfigureLicenseFile) {
+                # Input in plain text to trim and prevent issues
                 $LicenseKeys = (Read-Host -Prompt "Enter Alteryx license key(s)").Trim()
                 try {
                     $EncryptedLicenseKeys = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String $LicenseKeys -AsPlainText -Force)
