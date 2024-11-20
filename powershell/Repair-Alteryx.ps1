@@ -11,6 +11,9 @@ function Repair-Alteryx {
         Author:         Florian Carrier
         Creation date:  2022-04-22
         Last modified:  2022-04-27
+
+        .LINK
+        https://knowledge.alteryx.com/index/s/article/How-To-and-When-to-run-a-manual-reindex
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
