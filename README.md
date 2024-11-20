@@ -563,6 +563,7 @@ This module depends on the usage of functions provided by two PowerShell modules
 
 1. PowerShell Tool Kit ([PSTK]) module (version 1.2.6);
 2. Alteryx PowerShell ([PSAYX]) module (version 1.1.1).
+2. Alteryx PowerShell ([PSAYX]) module (version 1.1.1).
 
 ## Compatibility
 
