@@ -10,7 +10,7 @@ function Invoke-DownloadAlteryx {
         File name:      Invoke-DownloadAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2024-09-04
-        Last modified:  2024-10-08
+        Last modified:  2024-11-20
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -55,7 +55,7 @@ function Invoke-DownloadAlteryx {
         $RegistryKey = "HKLM:HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\SRC\Alteryx"
         # License API refresh token
         $LicenseAPIPath = Join-Path -Path $Properties.ResDirectory -ChildPath $Properties.LicenseAPIFile
-        $RefreshToken = (ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String (Get-Content -Path $LicenseAPIPath)) -AsPlainText) -replace "`r|`n", ""
+        $RefreshToken = ([System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString -String (Get-Content -Path $LicenseAPIPath))))) -replace "`r|`n", ""
         # Placeholder
         $Skip = $false
     }
@@ -68,7 +68,7 @@ function Invoke-DownloadAlteryx {
         if ($null -eq $RefreshToken) {
             Write-Log -Type "ERROR" -Message "The Alteryx license portal API refresh token has not been configured"
             if (-Not $Unattended) {
-                $RefreshToken = Read-Host -Prompt "Enter your Alteryx license portal API refresh token"
+                $RefreshToken = (Read-Host -Prompt "Enter your Alteryx license portal API refresh token").Trim()
             } else {
                 Write-Log -Type "ERROR" -Message "Download process cannot proceed"
                 $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
@@ -144,7 +144,7 @@ function Invoke-DownloadAlteryx {
                 "Server"            = $ProductID
                 # "PredictiveTools"   = "Predictive Tools"  # Included within Server
                 "IntelligenceSuite" = "Alteryx Intelligence Suite"
-                # "DataPackages"      = "Data Packages"     # 
+                # "DataPackages"      = "Data Packages"     # ! Not yet supported
             }
             foreach ($Product in $Products.GetEnumerator()) {
                 if ($InstallationProperties.$($Product.Key) -eq $true) {
@@ -156,8 +156,12 @@ function Invoke-DownloadAlteryx {
                             # Check upgrade step
                             if (Compare-Version -Version $TargetVersion -Operator "eq" -Reference $MajorVersion) {
                                 # If minor or patch upgrade, download patch
-                                $Release = Get-AlteryxLatestRelease -AccountID $Properties.LicenseAccountID -Token $AccessToken -ProductID $ProductID -Version $TargetVersion -Patch
-                                $FormattedVersion = "patch version"
+                                $PatchRelease = Get-AlteryxLatestRelease -AccountID $Properties.LicenseAccountID -Token $AccessToken -ProductID $ProductID -Version $TargetVersion -Patch
+                                if ($null -ne $PatchRelease) {
+                                    # Overwrite default release
+                                    $Release = $PatchRelease
+                                    $FormattedVersion = "patch version"
+                                }
                             }
                         } else {
                             # Fetch latest release for add-ons
