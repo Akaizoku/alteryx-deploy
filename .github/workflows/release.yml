@@ -1,0 +1,40 @@
+name: Release Assets
+
+on:
+  release:
+    types: [created]
+
+jobs:
+  compress:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository content
+      uses: actions/checkout@v2
+      with:
+        ref: ${{ github.event.release.tag_name }}
+
+    - name: Get repository name
+      id: repo
+      run: echo "::set-output name=name::$(basename $GITHUB_REPOSITORY)"
+
+    - name: Get release version
+      id: version
+      run: echo "::set-output name=version::${{ github.event.release.tag_name }}"
+
+    - name: Remove Git and GitHub-related files
+      run: |
+        rm -rf .git
+        rm -rf .github
+
+    - name: Compress repository content into ZIP file
+      run: |
+        zip -r ${{ steps.repo.outputs.name }}-v${{ steps.version.outputs.version }}.zip .
+
+    - name: Upload ZIP file to release
+      uses: actions/upload-release-asset@v1
+      with:
+        upload_url: ${{ github.event.release.upload_url }}
+        asset_path: ${{ steps.repo.outputs.name }}-v${{ steps.version.outputs.version }}.zip
+        asset_name: ${{ steps.repo.outputs.name }}-v${{ steps.version.outputs.version }}.zip
+        asset_content_type: application/zip
