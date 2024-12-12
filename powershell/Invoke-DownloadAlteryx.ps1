@@ -10,7 +10,7 @@ function Invoke-DownloadAlteryx {
         File name:      Invoke-DownloadAlteryx.ps1
         Author:         Florian Carrier
         Creation date:  2024-09-04
-        Last modified:  2024-11-20
+        Last modified:  2024-12-10
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -55,7 +55,6 @@ function Invoke-DownloadAlteryx {
         $RegistryKey = "HKLM:HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\SRC\Alteryx"
         # License API refresh token
         $LicenseAPIPath = Join-Path -Path $Properties.ResDirectory -ChildPath $Properties.LicenseAPIFile
-        $RefreshToken = ([System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString -String (Get-Content -Path $LicenseAPIPath))))) -replace "`r|`n", ""
         # Placeholder
         $Skip = $false
     }
@@ -65,6 +64,18 @@ function Invoke-DownloadAlteryx {
         # ------------------------------------------------------------------------------
         # * Checks
         # ------------------------------------------------------------------------------
+        # Retrieve license API refresh token
+        try {
+            $RefreshToken = ([System.Runtime.InteropServices.Marshal]::PtrToStringAuto([System.Runtime.InteropServices.Marshal]::SecureStringToBSTR((ConvertTo-SecureString -String (Get-Content -Path $LicenseAPIPath))))) -replace "`r|`n", ""
+        }
+        catch {
+            Write-Log -Type "ERROR" -Message (Get-PowerShellError)
+            Write-Log -Type "ERROR" -Message "Cannot read license API refresh token"
+            Write-Log -Type "WARN"  -Message "Run setup to reconfigure"
+            $DownloadProcess = Update-ProcessObject -ProcessObject $DownloadProcess -Status "Failed" -ErrorCount 1 -ExitCode 1
+            return $DownloadProcess
+        }
+        # Check refresh token
         if ($null -eq $RefreshToken) {
             Write-Log -Type "ERROR" -Message "The Alteryx license portal API refresh token has not been configured"
             if (-Not $Unattended) {
@@ -75,6 +86,7 @@ function Invoke-DownloadAlteryx {
                 return $DownloadProcess
             }
         }
+        # Check license account ID
         if ($null -eq $Properties.LicenseAccountID) {
             Write-Log -Type "ERROR" -Message "The AccountID parameter has not been configured"
             if (-Not $Unattended) {

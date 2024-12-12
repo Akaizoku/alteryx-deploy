@@ -10,7 +10,7 @@ function Invoke-SetupScript {
         File name:      Invoke-SetupScript.ps1
         Author:         Florian Carrier
         Creation date:  2022-05-03
-        Last modified:  2024-11-20
+        Last modified:  2024-12-10
     #>
     [CmdletBinding (
         SupportsShouldProcess = $true
@@ -237,7 +237,17 @@ function Invoke-SetupScript {
             $LicenseFilePath        = Join-Path -Path "$PSScriptRoot/.." -ChildPath "$($Properties.ResDirectory)/$($Properties.LicenseFile)"
             $ConfigureLicenseFile   = $true
             if (Test-Path -Path $LicenseFilePath) {
-                $LicenseKeys = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String (Get-Content -Path $LicenseFilePath))
+                # Load license keys
+                try {
+                    $LicenseKeys = ConvertFrom-SecureString -SecureString (ConvertTo-SecureString -String (Get-Content -Path $LicenseFilePath))
+                }
+                catch {
+                    Write-Log -Type "ERROR" -Message (Get-PowerShellError)
+                    Write-Log -Type "ERROR" -Message "License keys could not be read"
+                    $SetupProcess   = Update-ProcessObject -ProcessObject $SetupProcess -ErrorCount 1
+                    $LicenseKeys    = $null
+                }
+                # Check license keys
                 if ($LicenseKeys -notin ($null, "")) {
                     Write-Log -Type "WARN"  -Message "License keys have already been configured"
                     $ConfigureLicenseFile = Confirm-Prompt -Prompt "Do you want to overwrite the existing license keys?"
