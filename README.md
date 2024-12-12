@@ -562,8 +562,7 @@ Below is an example of a successful installation log:
 This module depends on the usage of functions provided by two PowerShell modules:
 
 1. PowerShell Tool Kit ([PSTK]) module (version 1.2.6);
-2. Alteryx PowerShell ([PSAYX]) module (version 1.1.1).
-2. Alteryx PowerShell ([PSAYX]) module (version 1.1.1).
+2. Alteryx PowerShell ([PSAYX]) module (version 1.1.2).
 
 ## Compatibility
 
@@ -571,14 +570,15 @@ Below are listed the compatible versions for each of the release.
 
 Only the first version supported is listed. Later releases should also be compatible as long as no breaking change has been introduced. Please refer to the [Alteryx release notes](https://help.alteryx.com/release-notes) for more information.
 
-| `alteryx-deploy` | Alteryx  | PowerShell | [PSTK] | [PSAYX] |
-| ---------------- | -------- | ---------- | ------ | ------- |
-| [1.0.0]          | [2021.3] | 5.0        | 1.2.4  | 1.0.0   |
-| [1.1.0]          | [2021.3] | 5.0        | 1.2.5  | 1.0.1   |
-| [1.1.1]          | [2021.3] | 5.0        | 1.2.5  | 1.0.1   |
-| [1.1.2]          | [2021.3] | 5.0        | 1.2.5  | 1.0.1   |
-| [2.0.0]          | [2024.1] | 5.1        | 1.2.6  | 1.1.1   |
-| [2.0.1]          | [2024.2] | 5.1        | 1.2.6  | 1.1.1   |
+| `alteryx-deploy` |  Alteryx | PowerShell | [PSTK] | [PSAYX] |
+| ---------------: | -------: | ---------: | -----: | ------: |
+|          [1.0.0] | [2021.3] |        5.0 |  1.2.4 |   1.0.0 |
+|          [1.1.0] | [2021.3] |        5.0 |  1.2.5 |   1.0.1 |
+|          [1.1.1] | [2021.3] |        5.0 |  1.2.5 |   1.0.1 |
+|          [1.1.2] | [2021.3] |        5.0 |  1.2.5 |   1.0.1 |
+|          [2.0.0] | [2024.1] |        5.1 |  1.2.6 |   1.1.1 |
+|          [2.0.1] | [2024.2] |        5.1 |  1.2.6 |   1.1.1 |
+|          [2.0.2] | [2024.2] |        5.1 |  1.2.6 |   1.1.2 |
 
 ## Known issues
 
@@ -611,6 +611,8 @@ If this occurs, simply run the command [`Stop-Transcript`](https://learn.microso
 [1.1.1]:https://github.com/Akaizoku/alteryx-deploy/releases/1.1.1
 [1.1.2]:https://github.com/Akaizoku/alteryx-deploy/releases/1.1.2
 [2.0.0]:https://github.com/Akaizoku/alteryx-deploy/releases/2.0.0
+[2.0.1]:https://github.com/Akaizoku/alteryx-deploy/releases/2.0.1
+[2.0.2]:https://github.com/Akaizoku/alteryx-deploy/releases/2.0.2
 [2021.3]:https://help.alteryx.com/release-notes/server/server-20213-release-notes
 [2024.1]:https://help.alteryx.com/release-notes/en/release-notes/server-release-notes/server-2024-1-release-notes.html
 [2024.2]:https://help.alteryx.com/release-notes/en/release-notes/server-release-notes/server-2024-2-release-notes.html
