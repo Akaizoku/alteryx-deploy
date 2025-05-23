@@ -174,7 +174,7 @@ This section lists the mandatory parameters that must be specified to run the sc
 
 The `Action` parameter corresponds to the operation to perform.
 
-Nineteen options are available:
+Twenty options are available:
 
 - activate:     activate the Alteryx application license
 - backup:       backup the Alteryx application database
@@ -183,7 +183,6 @@ Nineteen options are available:
 - download:     download latest Alteryx application release
 - help:         display the help documentation
 - install:      install the Alteryx application
-- repair:       repair the Alteryx application database
 - open:         open the Alteryx application
 - patch:        patch upgrade the Alteryx application
 - ping:         check the status of the Alteryx application

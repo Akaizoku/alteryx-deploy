@@ -390,8 +390,8 @@ Process {
         "download"      { $Process = Invoke-DownloadAlteryx     -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
         "help"          { $Process = Show-Help                                                                                                                  }
         "install"       { $Process = Install-Alteryx            -Properties $Properties -InstallationProperties $InstallationProperties -Unattended:$Unattended }
-        "repair"        { $Process = Repair-Alteryx             -Properties $Properties -Unattended:$Unattended                                                 }
-        "open"          { $Process = Open-Alteryx               -Properties $Properties -Unattended:$Unattended                                                 }
+        "open"          { $Process = Open-Alteryx               -Properties $Properties -Unattended:$Unattended
+        }
         "patch"         { $Process = Invoke-PatchAlteryx        -Properties $Properties -Unattended:$Unattended                                                 }
         "ping"          { $Process = Invoke-PingAlteryx         -Properties $Properties -Unattended:$Unattended                                                 }
         "repair"        { $Process = Repair-Alteryx             -Properties $Properties -Unattended:$Unattended                                                 }
